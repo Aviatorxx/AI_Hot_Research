@@ -1,0 +1,1955 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+
+<head>
+      <meta charset="UTF-8">
+      <meta name="viewport" content="width=device-width, initial-scale=1.0">
+      <title>AI Hot Research - 热点监控</title>
+      <link rel="preconnect" href="https://fonts.googleapis.com">
+      <link href="https://fonts.googleapis.com/css2?family=Fira+Code:wght@400;500;600;700&family=Fira+Sans:wght@300;400;500;600;700&display=swap"
+            rel="stylesheet">
+      <!-- <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.4/dist/chart.umd.min.js"></script> -->
+      <style>
+            /* ============ DESIGN TOKENS ============ */
+            :root {
+                  --bg-void: #0A0A0F;
+                  --bg-surface: #111118;
+                  --bg-card: #16161F;
+                  --bg-card-hover: #1C1C28;
+                  --border-dim: rgba(255, 255, 255, 0.06);
+                  --border-glow: rgba(0, 255, 255, 0.15);
+
+                  --neon-cyan: #00FFFF;
+                  --neon-magenta: #FF00FF;
+                  --neon-green: #00FF88;
+                  --neon-amber: #FFB800;
+                  --neon-red: #FF3366;
+                  --neon-blue: #3388FF;
+
+                  --text-primary: #E8E8F0;
+                  --text-secondary: #8888A0;
+                  --text-muted: #555570;
+
+                  --font-mono: 'Fira Code', monospace;
+                  --font-sans: 'Fira Sans', sans-serif;
+
+                  --radius: 12px;
+                  --radius-sm: 8px;
+                  --glow-cyan: 0 0 20px rgba(0, 255, 255, 0.15), 0 0 60px rgba(0, 255, 255, 0.05);
+                  --glow-magenta: 0 0 20px rgba(255, 0, 255, 0.15), 0 0 60px rgba(255, 0, 255, 0.05);
+                  --transition: 200ms cubic-bezier(0.4, 0, 0.2, 1);
+            }
+
+            /* ============ RESET & BASE ============ */
+            *,
+            *::before,
+            *::after {
+                  box-sizing: border-box;
+                  margin: 0;
+                  padding: 0;
+            }
+
+            body {
+                  font-family: var(--font-sans);
+                  background: var(--bg-void);
+                  color: var(--text-primary);
+                  min-height: 100vh;
+                  overflow-x: hidden;
+                  -webkit-font-smoothing: antialiased;
+            }
+
+            /* Scanline overlay */
+            body::after {
+                  content: '';
+                  position: fixed;
+                  inset: 0;
+                  background: repeating-linear-gradient(0deg,
+                              transparent,
+                              transparent 2px,
+                              rgba(0, 0, 0, 0.03) 2px,
+                              rgba(0, 0, 0, 0.03) 4px);
+                  pointer-events: none;
+                  z-index: 9999;
+            }
+
+            @media (prefers-reduced-motion: reduce) {
+
+                  *,
+                  *::before,
+                  *::after {
+                        animation: none !important;
+                        transition-duration: 0.01ms !important;
+                  }
+            }
+
+            /* ============ SCROLLBAR ============ */
+            ::-webkit-scrollbar {
+                  width: 6px;
+            }
+
+            ::-webkit-scrollbar-track {
+                  background: var(--bg-void);
+            }
+
+            ::-webkit-scrollbar-thumb {
+                  background: var(--text-muted);
+                  border-radius: 3px;
+            }
+
+            ::-webkit-scrollbar-thumb:hover {
+                  background: var(--neon-cyan);
+            }
+
+            /* ============ LAYOUT ============ */
+            .app-wrapper {
+                  display: flex;
+                  flex-direction: column;
+                  min-height: 100vh;
+            }
+
+            /* ============ NAVBAR ============ */
+            .navbar {
+                  position: sticky;
+                  top: 0;
+                  z-index: 100;
+                  display: flex;
+                  align-items: center;
+                  justify-content: space-between;
+                  padding: 0 24px;
+                  height: 56px;
+                  background: rgba(10, 10, 15, 0.85);
+                  backdrop-filter: blur(16px) saturate(1.2);
+                  border-bottom: 1px solid var(--border-dim);
+            }
+
+            .navbar-brand {
+                  display: flex;
+                  align-items: center;
+                  gap: 10px;
+                  font-family: var(--font-mono);
+                  font-weight: 700;
+                  font-size: 16px;
+                  color: var(--neon-cyan);
+                  text-shadow: 0 0 10px rgba(0, 255, 255, 0.4);
+                  user-select: none;
+            }
+
+            .navbar-brand svg {
+                  flex-shrink: 0;
+            }
+
+            .navbar-actions {
+                  display: flex;
+                  align-items: center;
+                  gap: 8px;
+            }
+
+            /* ============ BUTTONS ============ */
+            .btn {
+                  display: inline-flex;
+                  align-items: center;
+                  gap: 6px;
+                  padding: 8px 16px;
+                  border: 1px solid var(--border-dim);
+                  border-radius: var(--radius-sm);
+                  background: var(--bg-card);
+                  color: var(--text-primary);
+                  font-family: var(--font-sans);
+                  font-size: 13px;
+                  font-weight: 500;
+                  cursor: pointer;
+                  transition: all var(--transition);
+                  white-space: nowrap;
+            }
+
+            .btn:hover {
+                  background: var(--bg-card-hover);
+                  border-color: var(--border-glow);
+                  box-shadow: var(--glow-cyan);
+            }
+
+            .btn:active {
+                  transform: scale(0.97);
+            }
+
+            .btn:focus-visible {
+                  outline: 2px solid var(--neon-cyan);
+                  outline-offset: 2px;
+            }
+
+            .btn svg {
+                  width: 16px;
+                  height: 16px;
+                  flex-shrink: 0;
+            }
+
+            .btn-primary {
+                  background: linear-gradient(135deg, rgba(0, 255, 255, 0.12), rgba(255, 0, 255, 0.08));
+                  border-color: rgba(0, 255, 255, 0.25);
+                  color: var(--neon-cyan);
+            }
+
+            .btn-primary:hover {
+                  background: linear-gradient(135deg, rgba(0, 255, 255, 0.2), rgba(255, 0, 255, 0.12));
+                  box-shadow: var(--glow-cyan);
+            }
+
+            .btn-ai {
+                  background: linear-gradient(135deg, rgba(255, 0, 255, 0.12), rgba(0, 255, 255, 0.08));
+                  border-color: rgba(255, 0, 255, 0.25);
+                  color: var(--neon-magenta);
+            }
+
+            .btn-ai:hover {
+                  background: linear-gradient(135deg, rgba(255, 0, 255, 0.2), rgba(0, 255, 255, 0.12));
+                  box-shadow: var(--glow-magenta);
+            }
+
+            .btn.loading {
+                  pointer-events: none;
+                  opacity: 0.7;
+            }
+
+            .btn.loading::after {
+                  content: '';
+                  width: 14px;
+                  height: 14px;
+                  border: 2px solid transparent;
+                  border-top-color: currentColor;
+                  border-radius: 50%;
+                  animation: spin 0.6s linear infinite;
+            }
+
+            @keyframes spin {
+                  to {
+                        transform: rotate(360deg);
+                  }
+            }
+
+            /* ============ MAIN CONTENT ============ */
+            .main-content {
+                  flex: 1;
+                  padding: 20px 24px 40px;
+                  max-width: 1440px;
+                  margin: 0 auto;
+                  width: 100%;
+            }
+
+            /* ============ STATS BAR ============ */
+            .stats-bar {
+                  display: grid;
+                  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+                  gap: 12px;
+                  margin-bottom: 20px;
+            }
+
+            .stat-card {
+                  display: flex;
+                  align-items: center;
+                  gap: 12px;
+                  padding: 16px;
+                  background: var(--bg-card);
+                  border: 1px solid var(--border-dim);
+                  border-radius: var(--radius);
+                  transition: all var(--transition);
+            }
+
+            .stat-card:hover {
+                  border-color: var(--border-glow);
+                  box-shadow: var(--glow-cyan);
+            }
+
+            .stat-icon {
+                  width: 40px;
+                  height: 40px;
+                  display: flex;
+                  align-items: center;
+                  justify-content: center;
+                  border-radius: 10px;
+                  flex-shrink: 0;
+            }
+
+            .stat-icon.cyan {
+                  background: rgba(0, 255, 255, 0.1);
+                  color: var(--neon-cyan);
+            }
+
+            .stat-icon.magenta {
+                  background: rgba(255, 0, 255, 0.1);
+                  color: var(--neon-magenta);
+            }
+
+            .stat-icon.green {
+                  background: rgba(0, 255, 136, 0.1);
+                  color: var(--neon-green);
+            }
+
+            .stat-icon.amber {
+                  background: rgba(255, 184, 0, 0.1);
+                  color: var(--neon-amber);
+            }
+
+            .stat-info {
+                  flex: 1;
+                  min-width: 0;
+            }
+
+            .stat-label {
+                  font-size: 12px;
+                  color: var(--text-muted);
+                  text-transform: uppercase;
+                  letter-spacing: 0.5px;
+                  font-family: var(--font-mono);
+            }
+
+            .stat-value {
+                  font-size: 24px;
+                  font-weight: 700;
+                  font-family: var(--font-mono);
+                  line-height: 1.2;
+            }
+
+            /* ============ BENTO GRID ============ */
+            .bento-grid {
+                  display: grid;
+                  grid-template-columns: repeat(12, 1fr);
+                  grid-auto-rows: minmax(60px, auto);
+                  gap: 12px;
+            }
+
+            .bento-card {
+                  background: var(--bg-card);
+                  border: 1px solid var(--border-dim);
+                  border-radius: var(--radius);
+                  overflow: hidden;
+                  transition: all var(--transition);
+                  display: flex;
+                  flex-direction: column;
+            }
+
+            .bento-card:hover {
+                  border-color: var(--border-glow);
+                  box-shadow: var(--glow-cyan);
+            }
+
+            .bento-card-header {
+                  display: flex;
+                  align-items: center;
+                  justify-content: space-between;
+                  padding: 14px 16px 10px;
+                  border-bottom: 1px solid var(--border-dim);
+            }
+
+            .bento-card-title {
+                  font-family: var(--font-mono);
+                  font-size: 13px;
+                  font-weight: 600;
+                  color: var(--text-secondary);
+                  display: flex;
+                  align-items: center;
+                  gap: 8px;
+            }
+
+            .bento-card-title .dot {
+                  width: 8px;
+                  height: 8px;
+                  border-radius: 50%;
+                  flex-shrink: 0;
+            }
+
+            .bento-card-body {
+                  flex: 1;
+                  padding: 12px 16px 16px;
+                  overflow-y: auto;
+            }
+
+            /* Platform tabs card */
+            .card-platforms {
+                  grid-column: span 12;
+                  grid-row: span 1;
+            }
+
+            /* Topic lists */
+            .card-topics {
+                  grid-column: span 7;
+                  grid-row: span 7;
+            }
+
+            .card-ai-panel {
+                  grid-column: span 5;
+                  grid-row: span 4;
+            }
+
+            /* Chat directly below AI panel in right column */
+            .card-chat {
+                  grid-column: span 5;
+                  grid-row: span 3;
+            }
+
+            /* Chart full width below (disabled)
+            .card-chart {
+                  grid-column: span 12;
+                  grid-row: span 4;
+            } */
+
+            /* ============ PLATFORM TABS ============ */
+            .platform-tabs {
+                  display: flex;
+                  gap: 6px;
+                  padding: 4px;
+                  overflow-x: auto;
+                  scrollbar-width: none;
+            }
+
+            .platform-tabs::-webkit-scrollbar {
+                  display: none;
+            }
+
+            .platform-tab {
+                  display: flex;
+                  align-items: center;
+                  gap: 6px;
+                  padding: 8px 14px;
+                  border: 1px solid transparent;
+                  border-radius: var(--radius-sm);
+                  background: transparent;
+                  color: var(--text-secondary);
+                  font-family: var(--font-sans);
+                  font-size: 13px;
+                  font-weight: 500;
+                  cursor: pointer;
+                  transition: all var(--transition);
+                  white-space: nowrap;
+            }
+
+            .platform-tab:hover {
+                  background: var(--bg-card-hover);
+                  color: var(--text-primary);
+            }
+
+            .platform-tab.active {
+                  background: rgba(0, 255, 255, 0.08);
+                  border-color: rgba(0, 255, 255, 0.2);
+                  color: var(--neon-cyan);
+            }
+
+            .platform-tab .tab-count {
+                  font-family: var(--font-mono);
+                  font-size: 11px;
+                  padding: 1px 6px;
+                  border-radius: 4px;
+                  background: rgba(255, 255, 255, 0.06);
+            }
+
+            .platform-tab.active .tab-count {
+                  background: rgba(0, 255, 255, 0.15);
+                  color: var(--neon-cyan);
+            }
+
+            /* ============ TOPIC LIST ============ */
+            .topic-list {
+                  display: flex;
+                  flex-direction: column;
+                  gap: 2px;
+            }
+
+            /* Pagination */
+            .pagination {
+                  display: flex;
+                  align-items: center;
+                  justify-content: center;
+                  gap: 6px;
+                  padding: 10px 0 4px;
+                  border-top: 1px solid var(--border-dim);
+                  margin-top: 4px;
+            }
+
+            .page-btn {
+                  min-width: 32px;
+                  height: 30px;
+                  display: flex;
+                  align-items: center;
+                  justify-content: center;
+                  border: 1px solid var(--border-dim);
+                  border-radius: 6px;
+                  background: var(--bg-surface);
+                  color: var(--text-muted);
+                  font-family: var(--font-mono);
+                  font-size: 12px;
+                  cursor: pointer;
+                  transition: all var(--transition);
+                  padding: 0 8px;
+            }
+
+            .page-btn:hover:not(:disabled) {
+                  border-color: var(--neon-cyan);
+                  color: var(--neon-cyan);
+            }
+
+            .page-btn.active {
+                  background: rgba(0, 255, 255, 0.1);
+                  border-color: var(--neon-cyan);
+                  color: var(--neon-cyan);
+                  box-shadow: 0 0 8px rgba(0, 255, 255, 0.15);
+            }
+
+            .page-btn:disabled {
+                  opacity: 0.3;
+                  cursor: not-allowed;
+            }
+
+            .page-info {
+                  font-family: var(--font-mono);
+                  font-size: 11px;
+                  color: var(--text-muted);
+                  padding: 0 6px;
+            }
+
+            .topic-item {
+                  display: flex;
+                  align-items: center;
+                  gap: 12px;
+                  padding: 10px 12px;
+                  border-radius: var(--radius-sm);
+                  cursor: pointer;
+                  transition: all var(--transition);
+                  text-decoration: none;
+                  color: inherit;
+            }
+
+            .topic-item:hover {
+                  background: var(--bg-card-hover);
+            }
+
+            .topic-rank {
+                  font-family: var(--font-mono);
+                  font-size: 13px;
+                  font-weight: 700;
+                  width: 28px;
+                  height: 28px;
+                  display: flex;
+                  align-items: center;
+                  justify-content: center;
+                  border-radius: 6px;
+                  flex-shrink: 0;
+                  background: rgba(255, 255, 255, 0.04);
+                  color: var(--text-muted);
+            }
+
+            .topic-rank.top-1 {
+                  background: rgba(255, 51, 102, 0.15);
+                  color: var(--neon-red);
+                  text-shadow: 0 0 8px rgba(255, 51, 102, 0.5);
+            }
+
+            .topic-rank.top-2 {
+                  background: rgba(255, 184, 0, 0.12);
+                  color: var(--neon-amber);
+            }
+
+            .topic-rank.top-3 {
+                  background: rgba(0, 255, 255, 0.1);
+                  color: var(--neon-cyan);
+            }
+
+            .topic-content {
+                  flex: 1;
+                  min-width: 0;
+            }
+
+            .topic-title {
+                  font-size: 14px;
+                  font-weight: 500;
+                  line-height: 1.4;
+                  white-space: nowrap;
+                  overflow: hidden;
+                  text-overflow: ellipsis;
+                  color: var(--text-primary);
+            }
+
+            .topic-meta {
+                  display: flex;
+                  align-items: center;
+                  gap: 8px;
+                  margin-top: 2px;
+            }
+
+            .topic-heat {
+                  font-family: var(--font-mono);
+                  font-size: 11px;
+                  color: var(--text-muted);
+            }
+
+            .topic-category {
+                  font-size: 11px;
+                  padding: 1px 6px;
+                  border-radius: 4px;
+                  background: rgba(255, 0, 255, 0.08);
+                  color: var(--neon-magenta);
+            }
+
+            .topic-actions {
+                  display: flex;
+                  gap: 4px;
+                  opacity: 0;
+                  transition: opacity var(--transition);
+            }
+
+            .topic-item:hover .topic-actions {
+                  opacity: 1;
+            }
+
+            .topic-action-btn {
+                  width: 28px;
+                  height: 28px;
+                  display: flex;
+                  align-items: center;
+                  justify-content: center;
+                  border: 1px solid var(--border-dim);
+                  border-radius: 6px;
+                  background: var(--bg-card);
+                  color: var(--text-muted);
+                  cursor: pointer;
+                  transition: all var(--transition);
+            }
+
+            .topic-action-btn:hover {
+                  border-color: rgba(255, 0, 255, 0.3);
+                  color: var(--neon-magenta);
+                  box-shadow: 0 0 10px rgba(255, 0, 255, 0.1);
+            }
+
+            .topic-action-btn svg {
+                  width: 14px;
+                  height: 14px;
+            }
+
+            /* ============ AI PANEL ============ */
+            .ai-panel-content {
+                  display: flex;
+                  flex-direction: column;
+                  gap: 12px;
+                  height: 100%;
+            }
+
+            .ai-cluster {
+                  padding: 12px;
+                  border: 1px solid var(--border-dim);
+                  border-radius: var(--radius-sm);
+                  background: var(--bg-surface);
+                  transition: all var(--transition);
+            }
+
+            .ai-cluster:hover {
+                  border-color: var(--border-glow);
+            }
+
+            .ai-cluster-header {
+                  display: flex;
+                  align-items: center;
+                  justify-content: space-between;
+                  margin-bottom: 6px;
+            }
+
+            .ai-cluster-name {
+                  font-weight: 600;
+                  font-size: 14px;
+                  color: var(--text-primary);
+            }
+
+            .ai-cluster-badge {
+                  font-family: var(--font-mono);
+                  font-size: 11px;
+                  padding: 2px 8px;
+                  border-radius: 4px;
+            }
+
+            .badge-rising {
+                  background: rgba(255, 51, 102, 0.12);
+                  color: var(--neon-red);
+            }
+
+            .badge-stable {
+                  background: rgba(0, 255, 255, 0.1);
+                  color: var(--neon-cyan);
+            }
+
+            .badge-falling {
+                  background: rgba(136, 136, 160, 0.15);
+                  color: var(--text-muted);
+            }
+
+            .ai-cluster-summary {
+                  font-size: 13px;
+                  color: var(--text-secondary);
+                  line-height: 1.5;
+            }
+
+            .ai-heat-bar {
+                  margin-top: 8px;
+                  height: 3px;
+                  border-radius: 2px;
+                  background: rgba(255, 255, 255, 0.06);
+                  overflow: hidden;
+            }
+
+            .ai-heat-bar-fill {
+                  height: 100%;
+                  border-radius: 2px;
+                  background: linear-gradient(90deg, var(--neon-cyan), var(--neon-magenta));
+                  transition: width 0.5s ease;
+            }
+
+            .ai-overview {
+                  padding: 12px;
+                  border-radius: var(--radius-sm);
+                  background: linear-gradient(135deg, rgba(0, 255, 255, 0.05), rgba(255, 0, 255, 0.03));
+                  border: 1px solid rgba(0, 255, 255, 0.1);
+                  font-size: 13px;
+                  line-height: 1.6;
+                  color: var(--text-secondary);
+            }
+
+            .ai-placeholder {
+                  flex: 1;
+                  display: flex;
+                  flex-direction: column;
+                  align-items: center;
+                  justify-content: center;
+                  gap: 12px;
+                  color: var(--text-muted);
+                  text-align: center;
+                  padding: 20px;
+            }
+
+            .ai-placeholder svg {
+                  width: 48px;
+                  height: 48px;
+                  opacity: 0.3;
+            }
+
+            .ai-placeholder p {
+                  font-size: 13px;
+                  max-width: 200px;
+                  line-height: 1.5;
+            }
+
+            /* ============ CHART ============ */
+            .chart-container {
+                  position: relative;
+                  height: 100%;
+                  min-height: 260px;
+            }
+
+            .chart-container canvas {
+                  width: 100% !important;
+                  height: 100% !important;
+            }
+
+            /* ============ CHAT ============ */
+            .chat-container {
+                  display: flex;
+                  flex-direction: column;
+                  height: 100%;
+            }
+
+            .chat-messages {
+                  flex: 1;
+                  overflow-y: auto;
+                  display: flex;
+                  flex-direction: column;
+                  gap: 10px;
+                  padding-bottom: 8px;
+            }
+
+            .chat-msg {
+                  max-width: 90%;
+                  padding: 10px 14px;
+                  border-radius: 10px;
+                  font-size: 13px;
+                  line-height: 1.6;
+                  word-break: break-word;
+            }
+
+            .chat-msg.user {
+                  align-self: flex-end;
+                  background: rgba(0, 255, 255, 0.1);
+                  border: 1px solid rgba(0, 255, 255, 0.15);
+                  color: var(--neon-cyan);
+            }
+
+            .chat-msg.ai {
+                  align-self: flex-start;
+                  background: var(--bg-surface);
+                  border: 1px solid var(--border-dim);
+                  color: var(--text-secondary);
+            }
+
+            .chat-input-row {
+                  display: flex;
+                  gap: 8px;
+                  margin-top: 8px;
+            }
+
+            .chat-input {
+                  flex: 1;
+                  padding: 10px 14px;
+                  border: 1px solid var(--border-dim);
+                  border-radius: var(--radius-sm);
+                  background: var(--bg-surface);
+                  color: var(--text-primary);
+                  font-family: var(--font-sans);
+                  font-size: 13px;
+                  outline: none;
+                  transition: border-color var(--transition);
+            }
+
+            .chat-input:focus {
+                  border-color: var(--neon-cyan);
+                  box-shadow: 0 0 0 2px rgba(0, 255, 255, 0.1);
+            }
+
+            .chat-input::placeholder {
+                  color: var(--text-muted);
+            }
+
+            /* ============ MODAL ============ */
+            .modal-overlay {
+                  position: fixed;
+                  inset: 0;
+                  background: rgba(0, 0, 0, 0.7);
+                  backdrop-filter: blur(8px);
+                  z-index: 200;
+                  display: flex;
+                  align-items: center;
+                  justify-content: center;
+                  padding: 20px;
+                  opacity: 0;
+                  visibility: hidden;
+                  transition: all 0.2s ease;
+            }
+
+            .modal-overlay.active {
+                  opacity: 1;
+                  visibility: visible;
+            }
+
+            .modal {
+                  background: var(--bg-card);
+                  border: 1px solid var(--border-dim);
+                  border-radius: var(--radius);
+                  max-width: 560px;
+                  width: 100%;
+                  max-height: 80vh;
+                  overflow-y: auto;
+                  transform: translateY(10px) scale(0.98);
+                  transition: transform 0.2s ease;
+            }
+
+            .modal-overlay.active .modal {
+                  transform: translateY(0) scale(1);
+            }
+
+            .modal-header {
+                  display: flex;
+                  align-items: center;
+                  justify-content: space-between;
+                  padding: 16px 20px;
+                  border-bottom: 1px solid var(--border-dim);
+            }
+
+            .modal-title {
+                  font-family: var(--font-mono);
+                  font-size: 14px;
+                  font-weight: 600;
+                  color: var(--neon-magenta);
+            }
+
+            .modal-close {
+                  width: 32px;
+                  height: 32px;
+                  display: flex;
+                  align-items: center;
+                  justify-content: center;
+                  border: none;
+                  border-radius: 6px;
+                  background: transparent;
+                  color: var(--text-muted);
+                  cursor: pointer;
+                  transition: all var(--transition);
+            }
+
+            .modal-close:hover {
+                  background: var(--bg-card-hover);
+                  color: var(--text-primary);
+            }
+
+            .modal-body {
+                  padding: 20px;
+            }
+
+            .analysis-section {
+                  margin-bottom: 16px;
+            }
+
+            .analysis-label {
+                  font-family: var(--font-mono);
+                  font-size: 11px;
+                  color: var(--text-muted);
+                  text-transform: uppercase;
+                  letter-spacing: 0.5px;
+                  margin-bottom: 6px;
+            }
+
+            .analysis-text {
+                  font-size: 14px;
+                  line-height: 1.6;
+                  color: var(--text-secondary);
+            }
+
+            .analysis-tags {
+                  display: flex;
+                  flex-wrap: wrap;
+                  gap: 6px;
+            }
+
+            .analysis-tag {
+                  font-size: 12px;
+                  padding: 3px 10px;
+                  border-radius: 4px;
+                  background: rgba(0, 255, 255, 0.08);
+                  border: 1px solid rgba(0, 255, 255, 0.12);
+                  color: var(--neon-cyan);
+            }
+
+            .analysis-score {
+                  font-family: var(--font-mono);
+                  font-size: 32px;
+                  font-weight: 700;
+                  background: linear-gradient(135deg, var(--neon-cyan), var(--neon-magenta));
+                  -webkit-background-clip: text;
+                  -webkit-text-fill-color: transparent;
+            }
+
+            /* ============ EMPTY / LOADING ============ */
+            .loading-skeleton {
+                  display: flex;
+                  flex-direction: column;
+                  gap: 8px;
+            }
+
+            .skeleton-line {
+                  height: 14px;
+                  border-radius: 4px;
+                  background: linear-gradient(90deg, var(--bg-card-hover) 25%, var(--bg-surface) 50%, var(--bg-card-hover) 75%);
+                  background-size: 200% 100%;
+                  animation: shimmer 1.5s ease infinite;
+            }
+
+            .skeleton-line:nth-child(2) {
+                  width: 80%;
+            }
+
+            .skeleton-line:nth-child(3) {
+                  width: 60%;
+            }
+
+            @keyframes shimmer {
+                  0% {
+                        background-position: 200% 0;
+                  }
+
+                  100% {
+                        background-position: -200% 0;
+                  }
+            }
+
+            .pulse-dot {
+                  width: 8px;
+                  height: 8px;
+                  border-radius: 50%;
+                  background: var(--neon-green);
+                  animation: pulse 2s ease infinite;
+            }
+
+            @keyframes pulse {
+
+                  0%,
+                  100% {
+                        opacity: 1;
+                        box-shadow: 0 0 0 0 rgba(0, 255, 136, 0.4);
+                  }
+
+                  50% {
+                        opacity: 0.6;
+                        box-shadow: 0 0 0 6px rgba(0, 255, 136, 0);
+                  }
+            }
+
+            /* Toast */
+            .toast-container {
+                  position: fixed;
+                  top: 68px;
+                  right: 24px;
+                  z-index: 300;
+                  display: flex;
+                  flex-direction: column;
+                  gap: 8px;
+            }
+
+            .toast {
+                  padding: 10px 16px;
+                  border-radius: var(--radius-sm);
+                  font-size: 13px;
+                  font-family: var(--font-sans);
+                  border: 1px solid;
+                  animation: toast-in 0.3s ease;
+                  max-width: 360px;
+            }
+
+            .toast-success {
+                  background: rgba(0, 255, 136, 0.1);
+                  border-color: rgba(0, 255, 136, 0.2);
+                  color: var(--neon-green);
+            }
+
+            .toast-error {
+                  background: rgba(255, 51, 102, 0.1);
+                  border-color: rgba(255, 51, 102, 0.2);
+                  color: var(--neon-red);
+            }
+
+            .toast-info {
+                  background: rgba(0, 255, 255, 0.1);
+                  border-color: rgba(0, 255, 255, 0.2);
+                  color: var(--neon-cyan);
+            }
+
+            @keyframes toast-in {
+                  from {
+                        opacity: 0;
+                        transform: translateX(20px);
+                  }
+            }
+
+            /* ============ AUTO-REFRESH INDICATOR ============ */
+            .auto-refresh-wrap {
+                  display: flex;
+                  align-items: center;
+                  gap: 8px;
+                  padding: 4px 12px;
+                  border: 1px solid var(--border-dim);
+                  border-radius: 20px;
+                  background: var(--bg-card);
+            }
+
+            .auto-refresh-toggle {
+                  position: relative;
+                  width: 36px;
+                  height: 20px;
+                  background: rgba(255, 255, 255, 0.08);
+                  border-radius: 10px;
+                  cursor: pointer;
+                  transition: background var(--transition);
+                  border: none;
+                  padding: 0;
+            }
+
+            .auto-refresh-toggle.active {
+                  background: rgba(0, 255, 136, 0.25);
+            }
+
+            .auto-refresh-toggle::after {
+                  content: '';
+                  position: absolute;
+                  top: 3px;
+                  left: 3px;
+                  width: 14px;
+                  height: 14px;
+                  border-radius: 50%;
+                  background: var(--text-muted);
+                  transition: all var(--transition);
+            }
+
+            .auto-refresh-toggle.active::after {
+                  left: 19px;
+                  background: var(--neon-green);
+                  box-shadow: 0 0 6px rgba(0, 255, 136, 0.4);
+            }
+
+            .auto-refresh-label {
+                  font-family: var(--font-mono);
+                  font-size: 11px;
+                  color: var(--text-muted);
+                  white-space: nowrap;
+                  max-width: 0;
+                  overflow: hidden;
+                  opacity: 0;
+                  transition: all 0.3s ease;
+            }
+
+            .auto-refresh-wrap:hover .auto-refresh-label {
+                  max-width: 60px;
+                  opacity: 1;
+                  margin-left: 2px;
+            }
+
+            .countdown-ring {
+                  width: 22px;
+                  height: 22px;
+                  flex-shrink: 0;
+            }
+
+            .countdown-ring circle {
+                  fill: none;
+                  stroke-width: 2.5;
+            }
+
+            .countdown-ring .bg {
+                  stroke: rgba(255, 255, 255, 0.06);
+            }
+
+            .countdown-ring .fg {
+                  stroke: var(--neon-green);
+                  stroke-linecap: round;
+                  transform: rotate(-90deg);
+                  transform-origin: center;
+                  transition: stroke-dashoffset 1s linear;
+            }
+
+            /* ============ RESPONSIVE ============ */
+            @media (max-width: 1024px) {
+                  .card-topics {
+                        grid-column: span 12;
+                        grid-row: span 6;
+                  }
+
+                  .card-ai-panel {
+                        grid-column: span 12;
+                        grid-row: span 4;
+                  }
+
+                  .card-chat {
+                        grid-column: span 12;
+                        grid-row: span 3;
+                  }
+
+                  /* .card-chart {
+                        grid-column: span 12;
+                        grid-row: span 4;
+                  } */
+            }
+
+            @media (max-width: 768px) {
+                  .main-content {
+                        padding: 12px;
+                  }
+
+                  .stats-bar {
+                        grid-template-columns: repeat(2, 1fr);
+                  }
+
+                  .auto-refresh-wrap {
+                        display: none;
+                  }
+
+                  .navbar {
+                        padding: 0 12px;
+                  }
+
+                  .stat-card {
+                        padding: 12px;
+                  }
+
+                  .stat-value {
+                        font-size: 20px;
+                  }
+            }
+
+            @media (max-width: 480px) {
+                  .stats-bar {
+                        grid-template-columns: 1fr;
+                  }
+            }
+      </style>
+</head>
+
+<body>
+
+      <div class="app-wrapper">
+            <!-- ===== NAVBAR ===== -->
+            <nav class="navbar" role="navigation" aria-label="主导航">
+                  <div class="navbar-brand">
+                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                              stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                              <path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z" />
+                        </svg>
+                        <span>AI_HOT_RESEARCH</span>
+                        <div class="pulse-dot" title="服务运行中" id="statusDot"></div>
+                  </div>
+                  <div class="navbar-actions">
+                        <div class="auto-refresh-wrap">
+                              <svg class="countdown-ring" id="countdownRing" viewBox="0 0 24 24">
+                                    <circle class="bg" cx="12" cy="12" r="10" />
+                                    <circle class="fg" id="countdownArc" cx="12" cy="12" r="10" stroke-dasharray="62.83"
+                                          stroke-dashoffset="0" />
+                              </svg>
+                              <span class="auto-refresh-label" id="autoRefreshLabel">自动 5m</span>
+                              <button class="auto-refresh-toggle active" id="autoRefreshToggle"
+                                    onclick="toggleAutoRefresh()" title="切换自动刷新"></button>
+                        </div>
+                        <button class="btn btn-primary" onclick="refreshData()" id="btnRefresh" aria-label="刷新数据">
+                              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                                    stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                    <polyline points="23 4 23 10 17 10" />
+                                    <polyline points="1 20 1 14 7 14" />
+                                    <path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15" />
+                              </svg>
+                              刷新数据
+                        </button>
+                        <button class="btn btn-ai" onclick="aiAnalyze()" id="btnAnalyze" aria-label="AI 分析">
+                              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                                    stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                    <path d="M12 2a4 4 0 0 0-4 4c0 2 1 3 2 4l-5 7h14l-5-7c1-1 2-2 2-4a4 4 0 0 0-4-4z" />
+                                    <path d="M12 18v4" />
+                              </svg>
+                              AI 分析
+                        </button>
+                  </div>
+            </nav>
+
+            <!-- ===== MAIN ===== -->
+            <main class="main-content">
+                  <!-- STATS -->
+                  <section class="stats-bar" aria-label="数据概览">
+                        <div class="stat-card">
+                              <div class="stat-icon cyan">
+                                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                                          stroke-width="2">
+                                          <path d="M12 20V10" />
+                                          <path d="M18 20V4" />
+                                          <path d="M6 20v-4" />
+                                    </svg>
+                              </div>
+                              <div class="stat-info">
+                                    <div class="stat-label">热点总数</div>
+                                    <div class="stat-value" id="statTotal">--</div>
+                              </div>
+                        </div>
+                        <div class="stat-card">
+                              <div class="stat-icon magenta">
+                                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                                          stroke-width="2">
+                                          <rect x="3" y="3" width="7" height="7" />
+                                          <rect x="14" y="3" width="7" height="7" />
+                                          <rect x="14" y="14" width="7" height="7" />
+                                          <rect x="3" y="14" width="7" height="7" />
+                                    </svg>
+                              </div>
+                              <div class="stat-info">
+                                    <div class="stat-label">活跃平台</div>
+                                    <div class="stat-value" id="statPlatforms">--</div>
+                              </div>
+                        </div>
+                        <div class="stat-card">
+                              <div class="stat-icon green">
+                                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                                          stroke-width="2">
+                                          <circle cx="12" cy="12" r="10" />
+                                          <polyline points="12 6 12 12 16 14" />
+                                    </svg>
+                              </div>
+                              <div class="stat-info">
+                                    <div class="stat-label">更新时间</div>
+                                    <div class="stat-value" id="statTime" style="font-size:15px">--:--</div>
+                              </div>
+                        </div>
+                        <div class="stat-card">
+                              <div class="stat-icon amber">
+                                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                                          stroke-width="2">
+                                          <path
+                                                d="M12 2a4 4 0 0 0-4 4c0 2 1 3 2 4l-5 7h14l-5-7c1-1 2-2 2-4a4 4 0 0 0-4-4z" />
+                                          <path d="M12 18v4" />
+                                    </svg>
+                              </div>
+                              <div class="stat-info">
+                                    <div class="stat-label">AI 分析</div>
+                                    <div class="stat-value" id="statAnalyses">0</div>
+                              </div>
+                        </div>
+                  </section>
+
+                  <!-- BENTO GRID -->
+                  <div class="bento-grid">
+                        <!-- Platform Tabs -->
+                        <div class="bento-card card-platforms">
+                              <div class="bento-card-body" style="padding:8px 12px;">
+                                    <div class="platform-tabs" id="platformTabs" role="tablist">
+                                          <button class="platform-tab active" data-platform="all" role="tab"
+                                                aria-selected="true" onclick="switchPlatform('all')">
+                                                全部平台
+                                                <span class="tab-count" id="countAll">0</span>
+                                          </button>
+                                    </div>
+                              </div>
+                        </div>
+
+                        <!-- Topic List -->
+                        <div class="bento-card card-topics">
+                              <div class="bento-card-header">
+                                    <div class="bento-card-title">
+                                          <div class="dot"
+                                                style="background:var(--neon-cyan);box-shadow:0 0 6px var(--neon-cyan)">
+                                          </div>
+                                          LIVE FEED
+                                    </div>
+                                    <span style="font-family:var(--font-mono);font-size:11px;color:var(--text-muted)"
+                                          id="topicCount">0 topics</span>
+                              </div>
+                              <div class="bento-card-body" id="topicListContainer">
+                                    <div class="loading-skeleton">
+                                          <div class="skeleton-line"></div>
+                                          <div class="skeleton-line"></div>
+                                          <div class="skeleton-line"></div>
+                                    </div>
+                              </div>
+                        </div>
+
+                        <!-- AI Panel -->
+                        <div class="bento-card card-ai-panel">
+                              <div class="bento-card-header">
+                                    <div class="bento-card-title">
+                                          <div class="dot"
+                                                style="background:var(--neon-magenta);box-shadow:0 0 6px var(--neon-magenta)">
+                                          </div>
+                                          AI INSIGHTS
+                                    </div>
+                                    <span
+                                          style="font-family:var(--font-mono);font-size:11px;color:var(--text-muted)">DeepSeek</span>
+                              </div>
+                              <div class="bento-card-body" id="aiPanelContainer">
+                                    <div class="ai-placeholder">
+                                          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                                                <path
+                                                      d="M12 2a4 4 0 0 0-4 4c0 2 1 3 2 4l-5 7h14l-5-7c1-1 2-2 2-4a4 4 0 0 0-4-4z" />
+                                                <path d="M12 18v4" />
+                                          </svg>
+                                          <p>点击顶部「AI 分析」按钮，让 DeepSeek 智能解读当前热点趋势</p>
+                                    </div>
+                              </div>
+                        </div>
+
+                        <!-- Chat (promoted position) -->
+                        <div class="bento-card card-chat">
+                              <div class="bento-card-header">
+                                    <div class="bento-card-title">
+                                          <div class="dot"
+                                                style="background:var(--neon-amber);box-shadow:0 0 6px var(--neon-amber)">
+                                          </div>
+                                          AI CHAT
+                                    </div>
+                                    <span style="font-family:var(--font-mono);font-size:11px;color:var(--text-muted)">Ask
+                                          anything</span>
+                              </div>
+                              <div class="bento-card-body">
+                                    <div class="chat-container">
+                                          <div class="chat-messages" id="chatMessages">
+                                                <div class="chat-msg ai">你好！我是 AI
+                                                      热点分析助手。你可以问我任何关于当前热点趋势的问题，例如「今天最火的科技话题是什么？」</div>
+                                          </div>
+                                          <div class="chat-input-row">
+                                                <input class="chat-input" id="chatInput" type="text"
+                                                      placeholder="输入关于热点的问题..." aria-label="聊天输入"
+                                                      onkeydown="if(event.key==='Enter')sendChat()">
+                                                <button class="btn btn-primary" onclick="sendChat()" aria-label="发送">
+                                                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none"
+                                                            stroke="currentColor" stroke-width="2"
+                                                            stroke-linecap="round" stroke-linejoin="round">
+                                                            <line x1="22" y1="2" x2="11" y2="13" />
+                                                            <polygon points="22 2 15 22 11 13 2 9 22 2" />
+                                                      </svg>
+                                                </button>
+                                          </div>
+                                    </div>
+                              </div>
+                        </div>
+
+                        <!-- HEAT DISTRIBUTION Chart (disabled)
+                        <div class="bento-card card-chart">
+                              <div class="bento-card-header">
+                                    <div class="bento-card-title">
+                                          <div class="dot"
+                                                style="background:var(--neon-green);box-shadow:0 0 6px var(--neon-green)">
+                                          </div>
+                                          HEAT DISTRIBUTION
+                                    </div>
+                              </div>
+                              <div class="bento-card-body">
+                                    <div class="chart-container">
+                                          <canvas id="heatChart"></canvas>
+                                    </div>
+                              </div>
+                        </div>
+                        -->
+                  </div>
+            </main>
+      </div>
+
+      <!-- TOAST CONTAINER -->
+      <div class="toast-container" id="toastContainer"></div>
+
+      <!-- MODAL -->
+      <div class="modal-overlay" id="modalOverlay" onclick="if(event.target===this)closeModal()">
+            <div class="modal" role="dialog" aria-modal="true">
+                  <div class="modal-header">
+                        <div class="modal-title" id="modalTitle">话题分析</div>
+                        <button class="modal-close" onclick="closeModal()" aria-label="关闭">
+                              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                                    stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                    <line x1="18" y1="6" x2="6" y2="18" />
+                                    <line x1="6" y1="6" x2="18" y2="18" />
+                              </svg>
+                        </button>
+                  </div>
+                  <div class="modal-body" id="modalBody"></div>
+            </div>
+      </div>
+
+      <script>
+            // ==================== STATE ====================
+            const API = '';  // same origin
+            let allTopics = {};
+            let currentPlatform = 'all';
+            let analysisCount = 0;
+            // let heatChart = null;
+
+            // Pagination
+            const PAGE_SIZE = 20;
+            let currentPage = 1;
+
+            // Auto-refresh (5 minutes)
+            const AUTO_REFRESH_INTERVAL = 5 * 60;
+            let autoRefreshEnabled = true;
+            let autoRefreshCountdown = AUTO_REFRESH_INTERVAL;
+            let autoRefreshTimer = null;
+
+            const PLATFORM_NAMES = {
+                  weibo: '微博热搜', zhihu: '知乎热榜', baidu: '百度热搜',
+                  douyin: '抖音热点', bilibili: 'B站热门',
+                  // twitter: 'X 热点', reddit: 'Reddit',
+                  github: 'GitHub Trending', hackernews: 'Hacker News'
+            };
+            const PLATFORM_COLORS = {
+                  weibo: '#FF3366', zhihu: '#0066FF', baidu: '#3388FF',
+                  douyin: '#00FFFF', bilibili: '#FF00FF',
+                  // twitter: '#1DA1F2', reddit: '#FF4500',
+                  github: '#8B5CF6', hackernews: '#FF6600'
+            };
+
+            // ==================== INIT ====================
+            document.addEventListener('DOMContentLoaded', () => {
+                  refreshData();
+                  startAutoRefresh();
+            });
+
+            // ==================== DATA ====================
+            async function refreshData() {
+                  const btn = document.getElementById('btnRefresh');
+                  btn.classList.add('loading');
+                  try {
+                        const res = await fetch(`${API}/api/topics?refresh=true`);
+                        const data = await res.json();
+                        allTopics = data.platforms || {};
+                        updateUI();
+                        showToast('数据已更新', 'success');
+                        // Reset countdown after refresh
+                        autoRefreshCountdown = AUTO_REFRESH_INTERVAL;
+                        updateCountdownUI();
+                  } catch (e) {
+                        showToast('获取数据失败: ' + e.message, 'error');
+                  } finally {
+                        btn.classList.remove('loading');
+                  }
+            }
+
+            function updateUI() {
+                  updateStats();
+                  updatePlatformTabs();
+                  renderTopics();
+                  // updateChart();
+            }
+
+            function updateStats() {
+                  let total = 0;
+                  let activePlatforms = 0;
+                  for (const [k, v] of Object.entries(allTopics)) {
+                        if (v && v.length > 0) {
+                              total += v.length;
+                              activePlatforms++;
+                        }
+                  }
+                  document.getElementById('statTotal').textContent = total;
+                  document.getElementById('statPlatforms').textContent = activePlatforms;
+                  document.getElementById('statTime').textContent = new Date().toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit' });
+                  document.getElementById('statAnalyses').textContent = analysisCount;
+            }
+
+            function updatePlatformTabs() {
+                  const tabs = document.getElementById('platformTabs');
+                  let total = 0;
+                  for (const v of Object.values(allTopics)) total += (v ? v.length : 0);
+
+                  let html = `<button class="platform-tab ${currentPlatform === 'all' ? 'active' : ''}" data-platform="all" role="tab" onclick="switchPlatform('all')">
+    全部平台 <span class="tab-count">${total}</span>
+  </button>`;
+
+                  for (const [id, name] of Object.entries(PLATFORM_NAMES)) {
+                        const count = (allTopics[id] || []).length;
+                        html += `<button class="platform-tab ${currentPlatform === id ? 'active' : ''}" data-platform="${id}" role="tab" onclick="switchPlatform('${id}')">
+      ${name} <span class="tab-count">${count}</span>
+    </button>`;
+                  }
+                  tabs.innerHTML = html;
+            }
+
+            function switchPlatform(p) {
+                  currentPlatform = p;
+                  currentPage = 1;
+                  updatePlatformTabs();
+                  renderTopics();
+            }
+
+            function getVisibleTopics() {
+                  if (currentPlatform === 'all') {
+                        const merged = [];
+                        for (const [platform, topics] of Object.entries(allTopics)) {
+                              for (const t of (topics || [])) {
+                                    merged.push({ ...t, platform });
+                              }
+                        }
+                        return merged;
+                  }
+                  return (allTopics[currentPlatform] || []).map(t => ({ ...t, platform: currentPlatform }));
+            }
+
+            function renderTopics() {
+                  const container = document.getElementById('topicListContainer');
+                  const topics = getVisibleTopics();
+                  const totalTopics = topics.length;
+                  const totalPages = Math.max(1, Math.ceil(totalTopics / PAGE_SIZE));
+
+                  if (currentPage > totalPages) currentPage = 1;
+
+                  document.getElementById('topicCount').textContent = `${totalTopics} topics`;
+
+                  if (totalTopics === 0) {
+                        container.innerHTML = `<div class="ai-placeholder">
+      <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
+      <p>暂无数据，请点击「刷新数据」获取最新热点</p>
+    </div>`;
+                        return;
+                  }
+
+                  // Paginate
+                  const startIdx = (currentPage - 1) * PAGE_SIZE;
+                  const pageTopics = topics.slice(startIdx, startIdx + PAGE_SIZE);
+
+                  let html = '<div class="topic-list">' + pageTopics.map((t, i) => {
+                        const globalIdx = startIdx + i;
+                        const rankClass = globalIdx === 0 ? 'top-1' : globalIdx === 1 ? 'top-2' : globalIdx === 2 ? 'top-3' : '';
+                        const platformLabel = currentPlatform === 'all' ? `<span class="topic-category">${PLATFORM_NAMES[t.platform] || t.platform}</span>` : '';
+                        const category = t.category ? `<span class="topic-category">${t.category}</span>` : '';
+                        return `<a class="topic-item" ${t.url ? `href="${t.url}" target="_blank" rel="noopener noreferrer"` : ''} aria-label="${escapeAttr(t.title)}">
+      <div class="topic-rank ${rankClass}">${globalIdx + 1}</div>
+      <div class="topic-content">
+        <div class="topic-title">${escapeHtml(t.title)}</div>
+        <div class="topic-meta">
+          <span class="topic-heat">${t.hot_value || ''}</span>
+          ${platformLabel}${category}
+        </div>
+      </div>
+      <div class="topic-actions">
+        <button class="topic-action-btn" onclick="event.preventDefault();event.stopPropagation();analyzeTopic('${escapeAttr(t.title)}')" title="AI 分析此话题" aria-label="分析 ${escapeAttr(t.title)}">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2a4 4 0 0 0-4 4c0 2 1 3 2 4l-5 7h14l-5-7c1-1 2-2 2-4a4 4 0 0 0-4-4z"/><path d="M12 18v4"/></svg>
+        </button>
+      </div>
+    </a>`;
+                  }).join('') + '</div>';
+
+                  // Pagination controls
+                  if (totalPages > 1) {
+                        html += '<div class="pagination">';
+                        html += `<button class="page-btn" onclick="goToPage(${currentPage - 1})" ${currentPage <= 1 ? 'disabled' : ''}>‹</button>`;
+
+                        const pages = getPageNumbers(currentPage, totalPages);
+                        for (const p of pages) {
+                              if (p === '...') {
+                                    html += '<span class="page-info">…</span>';
+                              } else {
+                                    html += `<button class="page-btn ${p === currentPage ? 'active' : ''}" onclick="goToPage(${p})">${p}</button>`;
+                              }
+                        }
+
+                        html += `<button class="page-btn" onclick="goToPage(${currentPage + 1})" ${currentPage >= totalPages ? 'disabled' : ''}>›</button>`;
+                        html += `<span class="page-info">${startIdx + 1}-${Math.min(startIdx + PAGE_SIZE, totalTopics)} / ${totalTopics}</span>`;
+                        html += '</div>';
+                  }
+
+                  container.innerHTML = html;
+            }
+
+            function getPageNumbers(current, total) {
+                  if (total <= 7) return Array.from({ length: total }, (_, i) => i + 1);
+                  const pages = [];
+                  pages.push(1);
+                  if (current > 3) pages.push('...');
+                  for (let i = Math.max(2, current - 1); i <= Math.min(total - 1, current + 1); i++) {
+                        pages.push(i);
+                  }
+                  if (current < total - 2) pages.push('...');
+                  pages.push(total);
+                  return pages;
+            }
+
+            function goToPage(page) {
+                  const topics = getVisibleTopics();
+                  const totalPages = Math.ceil(topics.length / PAGE_SIZE);
+                  if (page < 1 || page > totalPages) return;
+                  currentPage = page;
+                  renderTopics();
+                  document.getElementById('topicListContainer').scrollTop = 0;
+            }
+
+            /* ==================== CHART (disabled) ====================
+            function updateChart() {
+                  const ctx = document.getElementById('heatChart');
+                  const labels = [];
+                  const values = [];
+                  const colors = [];
+
+                  for (const [id, name] of Object.entries(PLATFORM_NAMES)) {
+                        const topics = allTopics[id] || [];
+                        labels.push(name);
+                        values.push(topics.length);
+                        colors.push(PLATFORM_COLORS[id]);
+                  }
+
+                  if (heatChart) heatChart.destroy();
+
+                  heatChart = new Chart(ctx, {
+                        type: 'bar',
+                        data: {
+                              labels,
+                              datasets: [{
+                                    label: '热点数量',
+                                    data: values,
+                                    backgroundColor: colors.map(c => c + '33'),
+                                    borderColor: colors,
+                                    borderWidth: 1.5,
+                                    borderRadius: 6,
+                                    barPercentage: 0.6,
+                              }]
+                        },
+                        options: {
+                              responsive: true,
+                              maintainAspectRatio: false,
+                              plugins: {
+                                    legend: { display: false },
+                                    tooltip: {
+                                          backgroundColor: '#16161F',
+                                          borderColor: 'rgba(0,255,255,0.2)',
+                                          borderWidth: 1,
+                                          titleFont: { family: "'Fira Code', monospace", size: 12 },
+                                          bodyFont: { family: "'Fira Sans', sans-serif", size: 12 },
+                                          titleColor: '#00FFFF',
+                                          bodyColor: '#E8E8F0',
+                                          padding: 10,
+                                          cornerRadius: 8,
+                                    }
+                              },
+                              scales: {
+                                    x: {
+                                          grid: { color: 'rgba(255,255,255,0.04)' },
+                                          ticks: { color: '#8888A0', font: { family: "'Fira Sans', sans-serif", size: 11 } },
+                                          border: { color: 'rgba(255,255,255,0.06)' }
+                                    },
+                                    y: {
+                                          grid: { color: 'rgba(255,255,255,0.04)' },
+                                          ticks: { color: '#555570', font: { family: "'Fira Code', monospace", size: 11 } },
+                                          border: { color: 'rgba(255,255,255,0.06)' },
+                                          beginAtZero: true,
+                                    }
+                              }
+                        }
+                  });
+            }
+            */
+
+            // ==================== AI ====================
+            async function aiAnalyze() {
+                  const btn = document.getElementById('btnAnalyze');
+                  btn.classList.add('loading');
+                  const container = document.getElementById('aiPanelContainer');
+                  container.innerHTML = '<div class="loading-skeleton"><div class="skeleton-line"></div><div class="skeleton-line"></div><div class="skeleton-line"></div></div>';
+
+                  try {
+                        const res = await fetch(`${API}/api/analyze`, { method: 'POST' });
+                        if (!res.ok) {
+                              const err = await res.json();
+                              throw new Error(err.detail || 'AI 分析失败');
+                        }
+                        const data = await res.json();
+                        analysisCount++;
+                        document.getElementById('statAnalyses').textContent = analysisCount;
+                        renderAIPanel(data);
+                        showToast('AI 分析完成', 'success');
+                  } catch (e) {
+                        container.innerHTML = `<div class="ai-placeholder"><p style="color:var(--neon-red)">${escapeHtml(e.message)}</p></div>`;
+                        showToast('AI 分析失败: ' + e.message, 'error');
+                  } finally {
+                        btn.classList.remove('loading');
+                  }
+            }
+
+            function renderAIPanel(data) {
+                  const container = document.getElementById('aiPanelContainer');
+                  if (data.error) {
+                        container.innerHTML = `<div class="ai-placeholder"><p style="color:var(--neon-red)">${escapeHtml(data.error)}</p></div>`;
+                        return;
+                  }
+
+                  let html = '';
+
+                  if (data.overview) {
+                        html += `<div class="ai-overview">${escapeHtml(data.overview)}</div>`;
+                  }
+
+                  if (data.clusters) {
+                        html += '<div class="ai-panel-content">';
+                        for (const cluster of data.clusters) {
+                              const trendMap = { rising: '上升', stable: '稳定', falling: '下降' };
+                              const badgeClass = cluster.trend === 'rising' ? 'badge-rising' : cluster.trend === 'falling' ? 'badge-falling' : 'badge-stable';
+                              html += `<div class="ai-cluster">
+        <div class="ai-cluster-header">
+          <div class="ai-cluster-name">${escapeHtml(cluster.name)}</div>
+          <span class="ai-cluster-badge ${badgeClass}">${trendMap[cluster.trend] || cluster.trend}</span>
+        </div>
+        <div class="ai-cluster-summary">${escapeHtml(cluster.summary || '')}</div>
+        <div class="ai-heat-bar"><div class="ai-heat-bar-fill" style="width:${cluster.heat_score || 50}%"></div></div>
+      </div>`;
+                        }
+                        html += '</div>';
+                  }
+
+                  if (data.recommendation) {
+                        html += `<div class="ai-overview" style="margin-top:12px;border-color:rgba(255,0,255,0.15);background:linear-gradient(135deg,rgba(255,0,255,0.05),rgba(0,255,255,0.03))">
+      <strong style="color:var(--neon-magenta)">推荐关注：</strong> ${escapeHtml(data.recommendation)}
+    </div>`;
+                  }
+
+                  container.innerHTML = html;
+            }
+
+            async function analyzeTopic(title) {
+                  openModal('分析中...', '<div class="loading-skeleton"><div class="skeleton-line"></div><div class="skeleton-line"></div><div class="skeleton-line"></div></div>');
+
+                  try {
+                        const res = await fetch(`${API}/api/analyze/topic`, {
+                              method: 'POST',
+                              headers: { 'Content-Type': 'application/json' },
+                              body: JSON.stringify({ topic: title })
+                        });
+                        const data = await res.json();
+                        analysisCount++;
+                        document.getElementById('statAnalyses').textContent = analysisCount;
+                        renderTopicAnalysis(data);
+                  } catch (e) {
+                        document.getElementById('modalBody').innerHTML = `<p style="color:var(--neon-red)">${escapeHtml(e.message)}</p>`;
+                  }
+            }
+
+            function renderTopicAnalysis(data) {
+                  if (data.error) {
+                        document.getElementById('modalTitle').textContent = '分析失败';
+                        document.getElementById('modalBody').innerHTML = `<p style="color:var(--neon-red)">${escapeHtml(data.error)}</p>`;
+                        return;
+                  }
+
+                  document.getElementById('modalTitle').textContent = data.title || '话题分析';
+
+                  let html = '';
+
+                  if (data.impact_score !== undefined) {
+                        html += `<div class="analysis-section" style="text-align:center">
+      <div class="analysis-label">影响力指数</div>
+      <div class="analysis-score">${data.impact_score}</div>
+    </div>`;
+                  }
+
+                  if (data.category) {
+                        html += `<div class="analysis-section"><div class="analysis-label">分类</div>
+      <div class="analysis-tags"><span class="analysis-tag">${escapeHtml(data.category)}</span></div></div>`;
+                  }
+
+                  if (data.background) {
+                        html += `<div class="analysis-section"><div class="analysis-label">背景</div>
+      <div class="analysis-text">${escapeHtml(data.background)}</div></div>`;
+                  }
+
+                  if (data.public_opinion) {
+                        html += `<div class="analysis-section"><div class="analysis-label">舆论分析</div>`;
+                        if (data.public_opinion.positive) html += `<div class="analysis-text" style="margin-bottom:4px"><span style="color:var(--neon-green)">正面：</span>${escapeHtml(data.public_opinion.positive)}</div>`;
+                        if (data.public_opinion.negative) html += `<div class="analysis-text" style="margin-bottom:4px"><span style="color:var(--neon-red)">负面：</span>${escapeHtml(data.public_opinion.negative)}</div>`;
+                        if (data.public_opinion.neutral) html += `<div class="analysis-text"><span style="color:var(--neon-cyan)">中立：</span>${escapeHtml(data.public_opinion.neutral)}</div>`;
+                        html += '</div>';
+                  }
+
+                  if (data.trend_prediction) {
+                        html += `<div class="analysis-section"><div class="analysis-label">趋势预测</div>
+      <div class="analysis-text">${escapeHtml(data.trend_prediction)}</div></div>`;
+                  }
+
+                  if (data.related_topics && data.related_topics.length > 0) {
+                        html += `<div class="analysis-section"><div class="analysis-label">关联话题</div>
+      <div class="analysis-tags">${data.related_topics.map(t => `<span class="analysis-tag" style="cursor:pointer" onclick="closeModal();analyzeTopic('${escapeAttr(t)}')">${escapeHtml(t)}</span>`).join('')}</div></div>`;
+                  }
+
+                  document.getElementById('modalBody').innerHTML = html;
+            }
+
+            // ==================== CHAT ====================
+            async function sendChat() {
+                  const input = document.getElementById('chatInput');
+                  const msg = input.value.trim();
+                  if (!msg) return;
+                  input.value = '';
+
+                  const messages = document.getElementById('chatMessages');
+                  messages.innerHTML += `<div class="chat-msg user">${escapeHtml(msg)}</div>`;
+                  messages.innerHTML += `<div class="chat-msg ai" id="chatPending"><div class="loading-skeleton"><div class="skeleton-line" style="height:10px"></div></div></div>`;
+                  messages.scrollTop = messages.scrollHeight;
+
+                  try {
+                        const res = await fetch(`${API}/api/chat`, {
+                              method: 'POST',
+                              headers: { 'Content-Type': 'application/json' },
+                              body: JSON.stringify({ question: msg })
+                        });
+                        const data = await res.json();
+                        const pending = document.getElementById('chatPending');
+                        if (pending) {
+                              pending.id = '';
+                              pending.innerHTML = escapeHtml(data.answer || '抱歉，我暂时无法回答这个问题。');
+                        }
+                  } catch (e) {
+                        const pending = document.getElementById('chatPending');
+                        if (pending) {
+                              pending.id = '';
+                              pending.innerHTML = `<span style="color:var(--neon-red)">请求失败: ${escapeHtml(e.message)}</span>`;
+                        }
+                  }
+                  messages.scrollTop = messages.scrollHeight;
+            }
+
+            // ==================== AUTO-REFRESH ====================
+            function startAutoRefresh() {
+                  if (autoRefreshTimer) clearInterval(autoRefreshTimer);
+                  autoRefreshCountdown = AUTO_REFRESH_INTERVAL;
+                  updateCountdownUI();
+
+                  autoRefreshTimer = setInterval(() => {
+                        if (!autoRefreshEnabled) return;
+                        autoRefreshCountdown--;
+                        updateCountdownUI();
+
+                        if (autoRefreshCountdown <= 0) {
+                              autoRefreshCountdown = AUTO_REFRESH_INTERVAL;
+                              refreshData();
+                        }
+                  }, 1000);
+            }
+
+            function toggleAutoRefresh() {
+                  autoRefreshEnabled = !autoRefreshEnabled;
+                  const toggle = document.getElementById('autoRefreshToggle');
+                  toggle.classList.toggle('active', autoRefreshEnabled);
+
+                  if (autoRefreshEnabled) {
+                        autoRefreshCountdown = AUTO_REFRESH_INTERVAL;
+                        showToast('自动刷新已开启（每5分钟）', 'success');
+                  } else {
+                        showToast('自动刷新已关闭', 'info');
+                  }
+                  updateCountdownUI();
+            }
+
+            function updateCountdownUI() {
+                  const label = document.getElementById('autoRefreshLabel');
+                  const arc = document.getElementById('countdownArc');
+                  const circumference = 2 * Math.PI * 10; // r=10
+
+                  if (!autoRefreshEnabled) {
+                        label.textContent = '已暂停';
+                        arc.style.strokeDashoffset = circumference;
+                        arc.style.stroke = 'var(--text-muted)';
+                        return;
+                  }
+
+                  const mins = Math.floor(autoRefreshCountdown / 60);
+                  const secs = autoRefreshCountdown % 60;
+                  label.textContent = `${mins}:${String(secs).padStart(2, '0')}`;
+
+                  const progress = autoRefreshCountdown / AUTO_REFRESH_INTERVAL;
+                  arc.style.strokeDashoffset = circumference * (1 - progress);
+                  arc.style.stroke = progress < 0.2 ? 'var(--neon-amber)' : 'var(--neon-green)';
+            }
+
+            // ==================== MODAL ====================
+            function openModal(title, bodyHtml) {
+                  document.getElementById('modalTitle').textContent = title;
+                  document.getElementById('modalBody').innerHTML = bodyHtml;
+                  document.getElementById('modalOverlay').classList.add('active');
+                  document.body.style.overflow = 'hidden';
+            }
+
+            function closeModal() {
+                  document.getElementById('modalOverlay').classList.remove('active');
+                  document.body.style.overflow = '';
+            }
+
+            document.addEventListener('keydown', (e) => {
+                  if (e.key === 'Escape') closeModal();
+            });
+
+            // ==================== TOAST ====================
+            function showToast(message, type = 'info') {
+                  const container = document.getElementById('toastContainer');
+                  const toast = document.createElement('div');
+                  toast.className = `toast toast-${type}`;
+                  toast.textContent = message;
+                  container.appendChild(toast);
+                  setTimeout(() => {
+                        toast.style.opacity = '0';
+                        toast.style.transform = 'translateX(20px)';
+                        toast.style.transition = 'all 0.3s ease';
+                        setTimeout(() => toast.remove(), 300);
+                  }, 3000);
+            }
+
+            // ==================== UTILS ====================
+            function escapeHtml(str) {
+                  if (!str) return '';
+                  const div = document.createElement('div');
+                  div.textContent = str;
+                  return div.innerHTML;
+            }
+
+            function escapeAttr(str) {
+                  return (str || '').replace(/'/g, "\\'").replace(/"/g, '&quot;');
+            }
+      </script>
+
+</body>
+
+</html>
