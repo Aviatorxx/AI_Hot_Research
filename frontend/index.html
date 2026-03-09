@@ -5,6 +5,7 @@
       <meta charset="UTF-8">
       <meta name="viewport" content="width=device-width, initial-scale=1.0">
       <title>AI Hot Research - 热点监控</title>
+      <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='6' fill='%230A0A0F'/%3E%3Ctext x='50%25' y='50%25' dominant-baseline='central' text-anchor='middle' font-size='20'%3E%F0%9F%94%A5%3C/text%3E%3C/svg%3E">
       <link rel="preconnect" href="https://fonts.googleapis.com">
       <link href="https://fonts.googleapis.com/css2?family=Fira+Code:wght@400;500;600;700&family=Fira+Sans:wght@300;400;500;600;700&display=swap"
             rel="stylesheet">
@@ -313,8 +314,23 @@
             .bento-grid {
                   display: grid;
                   grid-template-columns: repeat(12, 1fr);
-                  grid-auto-rows: minmax(60px, auto);
                   gap: 12px;
+            }
+
+            /* Two-column main content area */
+            .content-columns {
+                  grid-column: span 12;
+                  display: grid;
+                  grid-template-columns: 7fr 5fr;
+                  gap: 12px;
+                  align-items: stretch;
+            }
+
+            .right-panels {
+                  display: flex;
+                  flex-direction: column;
+                  gap: 12px;
+                  min-height: 0;
             }
 
             .bento-card {
@@ -371,19 +387,30 @@
 
             /* Topic lists */
             .card-topics {
-                  grid-column: span 7;
-                  grid-row: span 7;
+                  min-height: 520px;
             }
 
             .card-ai-panel {
-                  grid-column: span 5;
-                  grid-row: span 4;
+                  flex: 1;
+                  min-height: 300px;
+                  overflow: hidden;
             }
 
-            /* Chat directly below AI panel in right column */
-            .card-chat {
-                  grid-column: span 5;
-                  grid-row: span 3;
+            /* Inline chat section inside card-topics (shown on 我的 tab) */
+            .my-chat-section {
+                  flex-shrink: 0;
+                  height: 380px;
+                  border-bottom: 1px solid var(--border-dim);
+                  padding: 10px 16px 12px;
+                  display: flex;
+                  flex-direction: column;
+            }
+
+            .my-chat-section .chat-container {
+                  flex: 1;
+                  display: flex;
+                  flex-direction: column;
+                  min-height: 0;
             }
 
             /* Chart full width below (disabled)
@@ -624,6 +651,266 @@
                   height: 14px;
             }
 
+            .topic-action-btn.like-btn.liked {
+                  color: var(--neon-red);
+                  border-color: rgba(255, 51, 102, 0.4);
+            }
+
+            .topic-action-btn.like-btn:hover {
+                  border-color: rgba(255, 51, 102, 0.4);
+                  color: var(--neon-red);
+                  box-shadow: 0 0 10px rgba(255, 51, 102, 0.15);
+            }
+
+            /* ============ MY PAGE ============ */
+            .my-page {
+                  display: flex;
+                  flex-direction: column;
+                  gap: 16px;
+                  height: 100%;
+                  overflow-y: auto;
+            }
+
+            .my-section-title {
+                  font-family: var(--font-mono);
+                  font-size: 11px;
+                  text-transform: uppercase;
+                  letter-spacing: 0.1em;
+                  color: var(--text-muted);
+                  margin-bottom: 8px;
+            }
+
+            .keyword-input-row {
+                  display: flex;
+                  gap: 8px;
+                  margin-bottom: 10px;
+            }
+
+            .keyword-input {
+                  flex: 1;
+                  background: var(--bg-surface);
+                  border: 1px solid var(--border-dim);
+                  border-radius: var(--radius-sm);
+                  color: var(--text-primary);
+                  font-family: var(--font-mono);
+                  font-size: 13px;
+                  padding: 6px 10px;
+                  outline: none;
+                  transition: border-color var(--transition);
+            }
+
+            .keyword-input:focus {
+                  border-color: rgba(0, 255, 255, 0.3);
+            }
+
+            .keyword-tags {
+                  display: flex;
+                  flex-wrap: wrap;
+                  gap: 6px;
+            }
+
+            .keyword-tag {
+                  display: inline-flex;
+                  align-items: center;
+                  gap: 4px;
+                  padding: 3px 8px;
+                  background: rgba(0, 255, 255, 0.08);
+                  border: 1px solid rgba(0, 255, 255, 0.15);
+                  border-radius: 20px;
+                  font-size: 12px;
+                  color: var(--neon-cyan);
+                  font-family: var(--font-mono);
+            }
+
+            .keyword-tag-remove {
+                  background: none;
+                  border: none;
+                  color: var(--text-muted);
+                  cursor: pointer;
+                  font-size: 14px;
+                  line-height: 1;
+                  padding: 0;
+                  display: flex;
+                  align-items: center;
+                  transition: color var(--transition);
+            }
+
+            .keyword-tag-remove:hover {
+                  color: var(--neon-red);
+            }
+
+            .interest-tags {
+                  display: flex;
+                  flex-wrap: wrap;
+                  gap: 6px;
+                  margin-top: 6px;
+            }
+
+            .interest-tag {
+                  padding: 3px 10px;
+                  background: rgba(255, 0, 255, 0.08);
+                  border: 1px solid rgba(255, 0, 255, 0.2);
+                  border-radius: 20px;
+                  font-size: 12px;
+                  color: var(--neon-magenta);
+                  font-family: var(--font-mono);
+            }
+
+            .recommend-topic-item {
+                  display: flex;
+                  flex-direction: column;
+                  gap: 2px;
+                  padding: 8px 10px;
+                  border: 1px solid var(--border-dim);
+                  border-radius: var(--radius-sm);
+                  background: var(--bg-surface);
+                  text-decoration: none;
+                  color: var(--text-primary);
+                  transition: all var(--transition);
+            }
+
+            .recommend-topic-item:hover {
+                  border-color: rgba(0, 255, 255, 0.2);
+                  background: var(--bg-card-hover);
+            }
+
+            .recommend-topic-title {
+                  font-size: 13px;
+                  line-height: 1.4;
+            }
+
+            .recommend-topic-meta {
+                  display: flex;
+                  align-items: center;
+                  gap: 6px;
+                  font-size: 11px;
+                  color: var(--text-muted);
+            }
+
+            .recommend-reason {
+                  font-size: 11px;
+                  color: var(--neon-cyan);
+                  opacity: 0.8;
+            }
+
+            .personal-report {
+                  padding: 12px;
+                  background: var(--bg-surface);
+                  border: 1px solid var(--border-dim);
+                  border-radius: var(--radius-sm);
+                  font-size: 13px;
+                  line-height: 1.7;
+                  color: var(--text-secondary);
+                  white-space: pre-wrap;
+            }
+
+            .articles-list {
+                  display: flex;
+                  flex-direction: column;
+                  gap: 8px;
+            }
+
+            /* ============ DISCOVER TABS (我的页面内 tab 切换) ============ */
+            .discover-tabs {
+                  display: flex;
+                  gap: 0;
+                  border-bottom: 1px solid var(--border-dim);
+                  margin-bottom: 10px;
+            }
+
+            .discover-tab {
+                  padding: 7px 14px;
+                  font-size: 12px;
+                  font-family: var(--font-mono);
+                  color: var(--text-muted);
+                  background: none;
+                  border: none;
+                  border-bottom: 2px solid transparent;
+                  cursor: pointer;
+                  transition: all var(--transition);
+                  white-space: nowrap;
+                  margin-bottom: -1px;
+            }
+
+            .discover-tab:hover {
+                  color: var(--text-primary);
+            }
+
+            .discover-tab.active {
+                  color: var(--neon-cyan);
+                  border-bottom-color: var(--neon-cyan);
+            }
+
+            .discover-tab .dtab-count {
+                  font-size: 10px;
+                  padding: 1px 5px;
+                  border-radius: 4px;
+                  background: rgba(255, 255, 255, 0.06);
+                  margin-left: 4px;
+            }
+
+            .discover-tab.active .dtab-count {
+                  background: rgba(0, 255, 255, 0.12);
+                  color: var(--neon-cyan);
+            }
+
+            .discover-pane {
+                  display: none;
+            }
+
+            .discover-pane.active {
+                  display: block;
+            }
+
+            .article-item {
+                  padding: 8px 10px;
+                  border: 1px solid var(--border-dim);
+                  border-radius: var(--radius-sm);
+                  background: var(--bg-surface);
+                  text-decoration: none;
+                  color: var(--text-primary);
+                  transition: all var(--transition);
+                  display: block;
+            }
+
+            .article-item:hover {
+                  border-color: rgba(139, 92, 246, 0.3);
+                  background: var(--bg-card-hover);
+            }
+
+            .article-title {
+                  font-size: 13px;
+                  margin-bottom: 3px;
+                  line-height: 1.4;
+            }
+
+            .article-meta {
+                  font-size: 11px;
+                  color: var(--text-muted);
+                  display: flex;
+                  gap: 8px;
+            }
+
+            .article-kw-badge {
+                  padding: 1px 6px;
+                  border-radius: 4px;
+                  background: rgba(139, 92, 246, 0.12);
+                  color: #8B5CF6;
+                  font-size: 10px;
+                  font-family: var(--font-mono);
+            }
+
+            .platform-tab.mine-tab {
+                  color: var(--neon-amber) !important;
+                  border-color: rgba(255, 184, 0, 0.2) !important;
+            }
+
+            .platform-tab.mine-tab.active {
+                  background: rgba(255, 184, 0, 0.1) !important;
+                  border-color: rgba(255, 184, 0, 0.4) !important;
+                  color: var(--neon-amber) !important;
+            }
+
             /* ============ AI PANEL ============ */
             .ai-panel-content {
                   display: flex;
@@ -783,6 +1070,46 @@
                   background: var(--bg-surface);
                   border: 1px solid var(--border-dim);
                   color: var(--text-secondary);
+            }
+
+            /* Typing indicator dots */
+            .chat-typing {
+                  display: inline-flex;
+                  align-items: center;
+                  gap: 5px;
+                  padding: 2px 0;
+            }
+
+            .chat-typing span {
+                  width: 7px;
+                  height: 7px;
+                  border-radius: 50%;
+                  background: var(--neon-cyan);
+                  opacity: 0.3;
+                  animation: chatBounce 1.2s ease-in-out infinite;
+            }
+
+            .chat-typing span:nth-child(2) {
+                  animation-delay: 0.2s;
+            }
+
+            .chat-typing span:nth-child(3) {
+                  animation-delay: 0.4s;
+            }
+
+            @keyframes chatBounce {
+
+                  0%,
+                  80%,
+                  100% {
+                        opacity: 0.3;
+                        transform: translateY(0);
+                  }
+
+                  40% {
+                        opacity: 1;
+                        transform: translateY(-4px);
+                  }
             }
 
             .chat-input-row {
@@ -1119,28 +1446,16 @@
 
             /* ============ RESPONSIVE ============ */
             @media (max-width: 1024px) {
-                  .card-topics {
-                        grid-column: span 12;
-                        grid-row: span 6;
+                  .content-columns {
+                        grid-template-columns: 1fr;
                   }
-
-                  .card-ai-panel {
-                        grid-column: span 12;
-                        grid-row: span 4;
-                  }
-
-                  .card-chat {
-                        grid-column: span 12;
-                        grid-row: span 3;
-                  }
-
-                  /* .card-chart {
-                        grid-column: span 12;
-                        grid-row: span 4;
-                  } */
             }
 
             @media (max-width: 768px) {
+                  .content-columns {
+                        grid-template-columns: 1fr;
+                  }
+
                   .main-content {
                         padding: 12px;
                   }
@@ -1295,85 +1610,85 @@
                               </div>
                         </div>
 
-                        <!-- Topic List -->
-                        <div class="bento-card card-topics">
-                              <div class="bento-card-header">
-                                    <div class="bento-card-title">
-                                          <div class="dot"
-                                                style="background:var(--neon-cyan);box-shadow:0 0 6px var(--neon-cyan)">
-                                          </div>
-                                          LIVE FEED
-                                    </div>
-                                    <span style="font-family:var(--font-mono);font-size:11px;color:var(--text-muted)"
-                                          id="topicCount">0 topics</span>
-                              </div>
-                              <div class="bento-card-body" id="topicListContainer">
-                                    <div class="loading-skeleton">
-                                          <div class="skeleton-line"></div>
-                                          <div class="skeleton-line"></div>
-                                          <div class="skeleton-line"></div>
-                                    </div>
-                              </div>
-                        </div>
+                        <!-- Main two-column area -->
+                        <div class="content-columns">
 
-                        <!-- AI Panel -->
-                        <div class="bento-card card-ai-panel">
-                              <div class="bento-card-header">
-                                    <div class="bento-card-title">
-                                          <div class="dot"
-                                                style="background:var(--neon-magenta);box-shadow:0 0 6px var(--neon-magenta)">
+                              <!-- Topic List -->
+                              <div class="bento-card card-topics">
+                                    <div class="bento-card-header">
+                                          <div class="bento-card-title">
+                                                <div class="dot"
+                                                      style="background:var(--neon-cyan);box-shadow:0 0 6px var(--neon-cyan)">
+                                                </div>
+                                                LIVE FEED
                                           </div>
-                                          AI INSIGHTS
+                                          <span style="font-family:var(--font-mono);font-size:11px;color:var(--text-muted)"
+                                                id="topicCount">0 topics</span>
                                     </div>
-                                    <span
-                                          style="font-family:var(--font-mono);font-size:11px;color:var(--text-muted)">DeepSeek</span>
-                              </div>
-                              <div class="bento-card-body" id="aiPanelContainer">
-                                    <div class="ai-placeholder">
-                                          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
-                                                <path
-                                                      d="M12 2a4 4 0 0 0-4 4c0 2 1 3 2 4l-5 7h14l-5-7c1-1 2-2 2-4a4 4 0 0 0-4-4z" />
-                                                <path d="M12 18v4" />
-                                          </svg>
-                                          <p>点击顶部「AI 分析」按钮，让 DeepSeek 智能解读当前热点趋势</p>
-                                    </div>
-                              </div>
-                        </div>
 
-                        <!-- Chat (promoted position) -->
-                        <div class="bento-card card-chat">
-                              <div class="bento-card-header">
-                                    <div class="bento-card-title">
-                                          <div class="dot"
-                                                style="background:var(--neon-amber);box-shadow:0 0 6px var(--neon-amber)">
+                                    <!-- Inline AI Chat — shown only on 我的 tab -->
+                                    <div id="myChatSection" class="my-chat-section" style="display:none">
+                                          <div class="chat-container">
+                                                <div class="chat-messages" id="chatMessages">
+                                                      <div class="chat-msg ai">你好！我是全能 AI 助手，实时获取热搜 +
+                                                            联网搜索，随时回答你的问题——新闻、科技、文化、百科……问我就对了！</div>
+                                                </div>
+                                                <div class="chat-input-row">
+                                                      <input class="chat-input" id="chatInput" type="text"
+                                                            placeholder="问我任何事情，全知全能..." aria-label="聊天输入"
+                                                            onkeydown="if(event.key==='Enter')sendChat()">
+                                                      <button class="btn btn-primary" onclick="sendChat()"
+                                                            aria-label="发送">
+                                                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none"
+                                                                  stroke="currentColor" stroke-width="2"
+                                                                  stroke-linecap="round" stroke-linejoin="round">
+                                                                  <line x1="22" y1="2" x2="11" y2="13" />
+                                                                  <polygon points="22 2 15 22 11 13 2 9 22 2" />
+                                                            </svg>
+                                                      </button>
+                                                </div>
                                           </div>
-                                          AI CHAT
                                     </div>
-                                    <span style="font-family:var(--font-mono);font-size:11px;color:var(--text-muted)">Ask
-                                          anything</span>
-                              </div>
-                              <div class="bento-card-body">
-                                    <div class="chat-container">
-                                          <div class="chat-messages" id="chatMessages">
-                                                <div class="chat-msg ai">你好！我是 AI
-                                                      热点分析助手。你可以问我任何关于当前热点趋势的问题，例如「今天最火的科技话题是什么？」</div>
+
+                                    <div class="bento-card-body" id="topicListContainer">
+                                          <div class="loading-skeleton">
+                                                <div class="skeleton-line"></div>
+                                                <div class="skeleton-line"></div>
+                                                <div class="skeleton-line"></div>
                                           </div>
-                                          <div class="chat-input-row">
-                                                <input class="chat-input" id="chatInput" type="text"
-                                                      placeholder="输入关于热点的问题..." aria-label="聊天输入"
-                                                      onkeydown="if(event.key==='Enter')sendChat()">
-                                                <button class="btn btn-primary" onclick="sendChat()" aria-label="发送">
-                                                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none"
-                                                            stroke="currentColor" stroke-width="2"
-                                                            stroke-linecap="round" stroke-linejoin="round">
-                                                            <line x1="22" y1="2" x2="11" y2="13" />
-                                                            <polygon points="22 2 15 22 11 13 2 9 22 2" />
+                                    </div>
+                              </div>
+
+                              <!-- Right column: AI Panel + Chat -->
+                              <div class="right-panels">
+
+                                    <!-- AI Panel -->
+                                    <div class="bento-card card-ai-panel">
+                                          <div class="bento-card-header">
+                                                <div class="bento-card-title">
+                                                      <div class="dot"
+                                                            style="background:var(--neon-magenta);box-shadow:0 0 6px var(--neon-magenta)">
+                                                      </div>
+                                                      AI INSIGHTS
+                                                </div>
+                                                <span
+                                                      style="font-family:var(--font-mono);font-size:11px;color:var(--text-muted)">DeepSeek</span>
+                                          </div>
+                                          <div class="bento-card-body" id="aiPanelContainer">
+                                                <div class="ai-placeholder">
+                                                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                                                            stroke-width="1.5">
+                                                            <path
+                                                                  d="M12 2a4 4 0 0 0-4 4c0 2 1 3 2 4l-5 7h14l-5-7c1-1 2-2 2-4a4 4 0 0 0-4-4z" />
+                                                            <path d="M12 18v4" />
                                                       </svg>
-                                                </button>
+                                                      <p>点击顶部「AI 分析」按钮，让 DeepSeek 智能解读当前热点趋势</p>
+                                                </div>
                                           </div>
                                     </div>
-                              </div>
-                        </div>
+
+                              </div><!-- /right-panels -->
+                        </div><!-- /content-columns -->
 
                         <!-- HEAT DISTRIBUTION Chart (disabled)
                         <div class="bento-card card-chart">
@@ -1420,7 +1735,7 @@
             // ==================== STATE ====================
             const API = '';  // same origin
             let allTopics = {};
-            let currentPlatform = 'all';
+            let currentPlatform = 'mine';
             let analysisCount = 0;
             // let heatChart = null;
 
@@ -1433,6 +1748,11 @@
             let autoRefreshEnabled = true;
             let autoRefreshCountdown = AUTO_REFRESH_INTERVAL;
             let autoRefreshTimer = null;
+
+            // My Page
+            let myLikes = {};    // {title: {platform, url}}
+            let myKeywords = []; // [{id, value}] — synced from backend
+            let myRecommendData = null; // last recommend API result
 
             const PLATFORM_NAMES = {
                   weibo: '微博热搜', zhihu: '知乎热榜', baidu: '百度热搜',
@@ -1449,6 +1769,7 @@
 
             // ==================== INIT ====================
             document.addEventListener('DOMContentLoaded', () => {
+                  loadPreferences();
                   refreshData();
                   startAutoRefresh();
             });
@@ -1476,7 +1797,13 @@
             function updateUI() {
                   updateStats();
                   updatePlatformTabs();
-                  renderTopics();
+                  const chatSection = document.getElementById('myChatSection');
+                  if (chatSection) chatSection.style.display = currentPlatform === 'mine' ? 'flex' : 'none';
+                  if (currentPlatform === 'mine') {
+                        renderMyPage();
+                  } else {
+                        renderTopics();
+                  }
                   // updateChart();
             }
 
@@ -1500,16 +1827,31 @@
                   let total = 0;
                   for (const v of Object.values(allTopics)) total += (v ? v.length : 0);
 
+                  // 全部平台 first
                   let html = `<button class="platform-tab ${currentPlatform === 'all' ? 'active' : ''}" data-platform="all" role="tab" onclick="switchPlatform('all')">
     全部平台 <span class="tab-count">${total}</span>
   </button>`;
 
+                  // ⭐ 我的 second — no count badge
+                  html += `<button class="platform-tab mine-tab ${currentPlatform === 'mine' ? 'active' : ''}" data-platform="mine" role="tab" onclick="switchPlatform('mine')">
+    ⭐ 我的
+  </button>`;
+
+                  // GitHub third
+                  const githubCount = (allTopics['github'] || []).length;
+                  html += `<button class="platform-tab ${currentPlatform === 'github' ? 'active' : ''}" data-platform="github" role="tab" onclick="switchPlatform('github')">
+    GitHub Trending <span class="tab-count">${githubCount}</span>
+  </button>`;
+
+                  // Remaining platforms (skip github, already added)
                   for (const [id, name] of Object.entries(PLATFORM_NAMES)) {
+                        if (id === 'github') continue;
                         const count = (allTopics[id] || []).length;
                         html += `<button class="platform-tab ${currentPlatform === id ? 'active' : ''}" data-platform="${id}" role="tab" onclick="switchPlatform('${id}')">
       ${name} <span class="tab-count">${count}</span>
     </button>`;
                   }
+
                   tabs.innerHTML = html;
             }
 
@@ -1517,7 +1859,13 @@
                   currentPlatform = p;
                   currentPage = 1;
                   updatePlatformTabs();
-                  renderTopics();
+                  const chatSection = document.getElementById('myChatSection');
+                  if (chatSection) chatSection.style.display = p === 'mine' ? 'flex' : 'none';
+                  if (p === 'mine') {
+                        renderMyPage();
+                  } else {
+                        renderTopics();
+                  }
             }
 
             function getVisibleTopics() {
@@ -1560,6 +1908,7 @@
                         const rankClass = globalIdx === 0 ? 'top-1' : globalIdx === 1 ? 'top-2' : globalIdx === 2 ? 'top-3' : '';
                         const platformLabel = currentPlatform === 'all' ? `<span class="topic-category">${PLATFORM_NAMES[t.platform] || t.platform}</span>` : '';
                         const category = t.category ? `<span class="topic-category">${t.category}</span>` : '';
+                        const isLiked = !!myLikes[t.title];
                         return `<a class="topic-item" ${t.url ? `href="${t.url}" target="_blank" rel="noopener noreferrer"` : ''} aria-label="${escapeAttr(t.title)}">
       <div class="topic-rank ${rankClass}">${globalIdx + 1}</div>
       <div class="topic-content">
@@ -1570,6 +1919,9 @@
         </div>
       </div>
       <div class="topic-actions">
+        <button class="topic-action-btn like-btn ${isLiked ? 'liked' : ''}" onclick="event.preventDefault();event.stopPropagation();toggleLike(event,'${escapeAttr(t.title)}','${escapeAttr(t.platform || currentPlatform)}','${escapeAttr(t.url || '')}')" title="${isLiked ? '取消收藏' : '收藏'}" aria-label="${isLiked ? '取消收藏' : '收藏'} ${escapeAttr(t.title)}">
+          <svg viewBox="0 0 24 24" fill="${isLiked ? 'currentColor' : 'none'}" stroke="currentColor" stroke-width="2"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg>
+        </button>
         <button class="topic-action-btn" onclick="event.preventDefault();event.stopPropagation();analyzeTopic('${escapeAttr(t.title)}')" title="AI 分析此话题" aria-label="分析 ${escapeAttr(t.title)}">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2a4 4 0 0 0-4 4c0 2 1 3 2 4l-5 7h14l-5-7c1-1 2-2 2-4a4 4 0 0 0-4-4z"/><path d="M12 18v4"/></svg>
         </button>
@@ -1686,8 +2038,433 @@
             }
             */
 
+            // ==================== MY PAGE ====================
+
+            async function loadPreferences() {
+                  // Load from backend DB (source of truth)
+                  try {
+                        const res = await fetch(`${API}/api/preferences`);
+                        const data = await res.json();
+                        // Rebuild myLikes map
+                        myLikes = {};
+                        for (const like of (data.likes || [])) {
+                              myLikes[like.value] = { platform: like.platform, url: like.url };
+                        }
+                        myKeywords = data.keywords || [];
+                  } catch (e) {
+                        // Silent fail — use empty state
+                  }
+                  updatePlatformTabs();
+            }
+
+            async function toggleLike(event, title, platform, url) {
+                  const isLiked = !!myLikes[title];
+                  if (isLiked) {
+                        delete myLikes[title];
+                        fetch(`${API}/api/preferences/unlike`, {
+                              method: 'POST',
+                              headers: { 'Content-Type': 'application/json' },
+                              body: JSON.stringify({ title })
+                        }).catch(() => { });
+                  } else {
+                        myLikes[title] = { platform, url };
+                        fetch(`${API}/api/preferences/like`, {
+                              method: 'POST',
+                              headers: { 'Content-Type': 'application/json' },
+                              body: JSON.stringify({ platform, title, url })
+                        }).catch(() => { });
+                  }
+                  // Update button appearance in place
+                  const btn = event.currentTarget;
+                  btn.classList.toggle('liked', !isLiked);
+                  btn.title = !isLiked ? '取消收藏' : '收藏';
+                  const svg = btn.querySelector('svg');
+                  if (svg) svg.setAttribute('fill', !isLiked ? 'currentColor' : 'none');
+                  // Update tab count
+                  updatePlatformTabs();
+            }
+
+            async function addKeyword() {
+                  const input = document.getElementById('keywordInput');
+                  const kw = (input.value || '').trim();
+                  if (!kw) return;
+                  input.value = '';
+                  try {
+                        const res = await fetch(`${API}/api/preferences/keyword`, {
+                              method: 'POST',
+                              headers: { 'Content-Type': 'application/json' },
+                              body: JSON.stringify({ keyword: kw })
+                        });
+                        const data = await res.json();
+                        myKeywords = data.keywords || myKeywords;
+                        renderMyPage();
+                        showToast(`已添加关键词「${kw}」`, 'success');
+                  } catch (e) {
+                        showToast('添加失败: ' + e.message, 'error');
+                  }
+            }
+
+            async function removeKeyword(id) {
+                  myKeywords = myKeywords.filter(k => k.id !== id);
+                  renderMyPage();
+                  fetch(`${API}/api/preferences/keyword/${id}`, { method: 'DELETE' }).catch(() => { });
+            }
+
+            function renderKeywordTags() {
+                  const container = document.getElementById('keywordTagsContainer');
+                  if (!container) return;
+                  if (myKeywords.length === 0) {
+                        container.innerHTML = '<span style="font-size:12px;color:var(--text-muted)">暂无关键词，添加后可获取相关新闻</span>';
+                        return;
+                  }
+                  container.innerHTML = myKeywords.map(k => `
+                        <span class="keyword-tag">
+                              ${escapeHtml(k.value)}
+                              <button class="keyword-tag-remove" onclick="removeKeyword(${k.id})" title="删除">×</button>
+                        </span>`).join('');
+            }
+
+            /* Return all cached topics whose title matches any keyword or liked-topic word */
+            const STOP_WORDS = new Set(['for', 'the', 'and', 'with', 'from', 'that', 'this', 'your', 'you', 'are', 'was', 'have', 'has', 'not', 'but', 'its', 'our', 'any', 'all', 'can', 'will', 'more', 'into', 'also', 'when', 'then', 'than', 'their', 'they', 'been', 'being', 'make', 'use', 'used', 'new', 'one', 'get', 'how', 'just', 'over', 'some', 'other', 'what', 'which']);
+
+            function getRelatedTopics() {
+                  // Build a list of match terms: user keywords + meaningful words from liked titles
+                  const terms = new Set();
+                  for (const kw of myKeywords) {
+                        if (kw.value && kw.value.trim()) terms.add(kw.value.trim().toLowerCase());
+                  }
+                  for (const title of Object.keys(myLikes)) {
+                        // CJK: 2+ chars; Latin: 4+ chars and not a stop word
+                        const cjk = title.match(/[\u4e00-\u9fa5]{2,}/g) || [];
+                        const latin = title.match(/[a-zA-Z]{4,}/g) || [];
+                        for (const w of cjk) terms.add(w.toLowerCase());
+                        for (const w of latin) {
+                              const lw = w.toLowerCase();
+                              if (!STOP_WORDS.has(lw)) terms.add(lw);
+                        }
+                  }
+                  if (terms.size === 0) return [];
+
+                  const seen = new Set();
+                  const liked = new Set(Object.keys(myLikes)); // exclude already-liked
+                  const results = [];
+
+                  for (const [platform, topics] of Object.entries(allTopics)) {
+                        for (const t of (topics || [])) {
+                              if (liked.has(t.title)) continue;
+                              if (seen.has(t.title)) continue;
+                              const lower = t.title.toLowerCase();
+                              let matchedTerm = null;
+                              for (const term of terms) {
+                                    if (lower.includes(term)) { matchedTerm = term; break; }
+                              }
+                              if (matchedTerm) {
+                                    seen.add(t.title);
+                                    results.push({ ...t, platform, matchedTerm });
+                              }
+                        }
+                  }
+                  return results.slice(0, 40);
+            }
+
+            function renderMyPage() {
+                  const container = document.getElementById('topicListContainer');
+                  const likeList = Object.entries(myLikes);
+                  const related = getRelatedTopics();
+                  document.getElementById('topicCount').textContent = `${likeList.length} saved · ${related.length} related`;
+
+                  let html = '<div class="my-page">';
+
+                  // Likes section
+                  // Replace inline likes section with a compact button row
+                  html += `<div style="display:flex;align-items:center;justify-content:space-between;padding:4px 0 8px">
+                        <span style="font-size:12px;color:var(--text-muted);font-family:var(--font-mono)">
+                              ${likeList.length > 0 ? `❤️ ${likeList.length} 条收藏` : '❤️ 暂无收藏'}
+                        </span>
+                        <button class="btn" style="padding:4px 12px;font-size:11px;color:var(--neon-magenta);border-color:var(--neon-magenta);opacity:${likeList.length > 0 ? 1 : 0.4}"
+                              onclick="showLikesModal()" ${likeList.length === 0 ? 'disabled' : ''}>
+                              查看收藏
+                        </button>
+                  </div>`;
+
+                  // Keywords section
+                  html += `<div>
+                        <div class="my-section-title">🔖 关键词订阅</div>
+                        <div class="keyword-input-row">
+                              <input class="keyword-input" id="keywordInput" type="text"
+                                    placeholder="输入关键词（如：AI、比特币）" maxlength="50"
+                                    onkeydown="if(event.key==='Enter')addKeyword()">
+                              <button class="btn btn-primary" onclick="addKeyword()">添加</button>
+                        </div>
+                        <div class="keyword-tags" id="keywordTagsContainer"></div>
+                  </div>`;
+
+                  // Unified discover section: tabs for 热榜 vs 外部新闻
+                  const hasTerms = myKeywords.length > 0 || Object.keys(myLikes).length > 0;
+                  html += `<div>
+                        <div class="discover-tabs">
+                              <button class="discover-tab active" onclick="switchDiscoverTab('hot',this)">
+                                    📡 热榜相关 <span class="dtab-count">${related.length}</span>
+                              </button>
+                              ${myKeywords.length > 0 ? `<button class="discover-tab" onclick="switchDiscoverTab('ext',this)">
+                                    🌐 外部新闻 <span class="dtab-count" id="extNewsCount">…</span>
+                              </button>` : ''}
+                        </div>
+
+                        <div class="discover-pane active" id="discoverPaneHot">`;
+
+                  if (related.length === 0) {
+                        html += `<div style="font-size:13px;color:var(--text-muted);padding:8px 0">
+                              ${hasTerms ? '当前热榜中暂无匹配内容，刷新数据后再试' : '添加关键词或收藏话题后，系统将自动从热榜中筛选相关条目'}
+                        </div>`;
+                  } else {
+                        html += '<div class="topic-list">';
+                        for (const t of related) {
+                              const platformName = PLATFORM_NAMES[t.platform] || t.platform || '';
+                              const highlighted = escapeHtml(t.title).replace(
+                                    new RegExp(escapeHtml(t.matchedTerm).replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'gi'),
+                                    m => `<mark style="background:rgba(0,255,255,0.15);color:var(--neon-cyan);border-radius:2px">${m}</mark>`
+                              );
+                              html += `<a class="topic-item" ${t.url ? `href="${escapeAttr(t.url)}" target="_blank" rel="noopener noreferrer"` : ''}>
+                                    <div class="topic-content">
+                                          <div class="topic-title">${highlighted}</div>
+                                          <div class="topic-meta">
+                                                <span class="topic-category">${escapeHtml(platformName)}</span>
+                                                <span class="topic-heat" style="color:var(--neon-cyan);opacity:0.7">${escapeHtml(t.matchedTerm)}</span>
+                                          </div>
+                                    </div>
+                                    <div class="topic-actions">
+                                          <button class="topic-action-btn like-btn"
+                                                onclick="toggleLike(event,'${escapeAttr(t.title)}','${escapeAttr(t.platform)}','${escapeAttr(t.url || '')}')"
+                                                title="收藏">
+                                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg>
+                                          </button>
+                                          <button class="topic-action-btn"
+                                                onclick="event.preventDefault();event.stopPropagation();analyzeTopic('${escapeAttr(t.title)}')"
+                                                title="AI 分析">
+                                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2a4 4 0 0 0-4 4c0 2 1 3 2 4l-5 7h14l-5-7c1-1 2-2 2-4a4 4 0 0 0-4-4z"/><path d="M12 18v4"/></svg>
+                                          </button>
+                                    </div>
+                              </a>`;
+                        }
+                        html += '</div>';
+                  }
+                  html += `</div>`; // discoverPaneHot
+
+                  if (myKeywords.length > 0) {
+                        html += `<div class="discover-pane" id="discoverPaneExt">
+                              <div id="externalFeedContainer">
+                                    <div style="font-size:12px;color:var(--text-muted);padding:4px 0">🔄 加载中...</div>
+                              </div>
+                        </div>`;
+                  }
+
+                  html += `</div>`; // discover wrapper
+
+                  html += '</div>';
+                  container.innerHTML = html;
+
+                  // Render keyword tags after HTML is injected
+                  renderKeywordTags();
+
+                  // Render AI/Articles panel
+                  renderRecommendPanel(myRecommendData);
+            }
+
+            async function loadExternalFeedArticles() {
+                  const container = document.getElementById('externalFeedContainer');
+                  if (!container) return;
+                  // Avoid duplicate fetches
+                  if (container.dataset.loaded === '1') return;
+                  container.dataset.loaded = '1';
+                  try {
+                        const kwStr = myKeywords.map(k => k.value).join(',');
+                        const res = await fetch(`${API}/api/feed?keywords=${encodeURIComponent(kwStr)}`);
+                        const data = await res.json();
+                        const articles = data.articles || [];
+                        const badge = document.getElementById('extNewsCount');
+                        if (badge) badge.textContent = articles.length || '0';
+                        if (articles.length === 0) {
+                              container.innerHTML = '<div style="font-size:12px;color:var(--text-muted);padding:4px 0">暂无相关外部新闻</div>';
+                              return;
+                        }
+                        let html = '<div class="articles-list">';
+                        for (const a of articles) {
+                              html += `<a class="article-item" href="${escapeAttr(a.url)}" target="_blank" rel="noopener noreferrer">
+                                    <div class="article-title">${escapeHtml(a.title)}</div>
+                                    <div class="article-meta">
+                                          <span class="article-kw-badge">${escapeHtml(a.keyword)}</span>
+                                          <span>${escapeHtml(a.source || '')}</span>
+                                    </div>
+                              </a>`;
+                        }
+                        html += '</div>';
+                        container.innerHTML = html;
+                  } catch (e) {
+                        const container2 = document.getElementById('externalFeedContainer');
+                        if (container2) container2.innerHTML = '<div style="font-size:12px;color:var(--text-muted)">外部新闻加载失败</div>';
+                  }
+            }
+
+            function switchDiscoverTab(tab, btn) {
+                  // Update tab buttons
+                  document.querySelectorAll('.discover-tab').forEach(b => b.classList.remove('active'));
+                  if (btn) btn.classList.add('active');
+                  // Update panes
+                  const hotPane = document.getElementById('discoverPaneHot');
+                  const extPane = document.getElementById('discoverPaneExt');
+                  if (hotPane) hotPane.classList.toggle('active', tab === 'hot');
+                  if (extPane) extPane.classList.toggle('active', tab === 'ext');
+                  // Lazy-load external news on first visit
+                  if (tab === 'ext') loadExternalFeedArticles();
+            }
+
+            function deleteLikeAndRefresh(title) {
+                  delete myLikes[title];
+                  fetch(`${API}/api/preferences/unlike`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ title })
+                  }).catch(() => { });
+                  updatePlatformTabs();
+                  renderMyPage();
+                  // If the likes modal is open, refresh it live
+                  if (document.getElementById('modalOverlay').classList.contains('active') &&
+                        document.getElementById('modalTitle').textContent.startsWith('❤️')) {
+                        showLikesModal();
+                  }
+            }
+
+            function showLikesModal() {
+                  const likeList = Object.entries(myLikes);
+                  let html = '';
+                  if (likeList.length === 0) {
+                        html = '<p style="color:var(--text-muted);font-size:13px">暂无收藏，在话题列表中点击 ❤️ 即可收藏。</p>';
+                  } else {
+                        html = '<div class="topic-list">';
+                        likeList.forEach(([title, info]) => {
+                              const platformName = PLATFORM_NAMES[info.platform] || info.platform || '';
+                              html += `<a class="topic-item" ${info.url ? `href="${escapeAttr(info.url)}" target="_blank" rel="noopener noreferrer"` : ''}>
+                                    <div class="topic-content">
+                                          <div class="topic-title">${escapeHtml(title)}</div>
+                                          <div class="topic-meta"><span class="topic-category">${escapeHtml(platformName)}</span></div>
+                                    </div>
+                                    <div class="topic-actions" style="opacity:1">
+                                          <button class="topic-action-btn like-btn liked"
+                                                onclick="event.preventDefault();event.stopPropagation();deleteLikeAndRefresh('${escapeAttr(title)}')"
+                                                title="取消收藏">
+                                                <svg viewBox="0 0 24 24" fill="currentColor" stroke="currentColor" stroke-width="2"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg>
+                                          </button>
+                                          <button class="topic-action-btn"
+                                                onclick="event.preventDefault();event.stopPropagation();analyzeTopic('${escapeAttr(title)}')"
+                                                title="AI 分析">
+                                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2a4 4 0 0 0-4 4c0 2 1 3 2 4l-5 7h14l-5-7c1-1 2-2 2-4a4 4 0 0 0-4-4z"/><path d="M12 18v4"/></svg>
+                                          </button>
+                                    </div>
+                              </a>`;
+                        });
+                        html += '</div>';
+                  }
+                  openModal(`❤️ 已收藏话题（${likeList.length}）`, html);
+            }
+
+            async function fetchRecommendations() {
+                  const aiContainer = document.getElementById('aiPanelContainer');
+                  aiContainer.innerHTML = '<div class="loading-skeleton"><div class="skeleton-line"></div><div class="skeleton-line"></div><div class="skeleton-line"></div></div>';
+
+                  try {
+                        const res = await fetch(`${API}/api/recommend`, { method: 'POST' });
+                        if (!res.ok) throw new Error('推荐请求失败');
+                        const data = await res.json();
+                        myRecommendData = data;
+                        renderRecommendPanel(data);
+                        showToast('个性化推荐已生成', 'success');
+                  } catch (e) {
+                        aiContainer.innerHTML = `<div class="ai-placeholder"><p style="color:var(--neon-red)">${escapeHtml(e.message)}</p></div>`;
+                        showToast('推荐失败: ' + e.message, 'error');
+                  }
+            }
+
+            function renderRecommendPanel(data) {
+                  const aiContainer = document.getElementById('aiPanelContainer');
+                  const chatContainer = null; // chat moved inline to my-page
+
+                  if (!data) {
+                        aiContainer.innerHTML = `<div class="ai-placeholder">
+                              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" width="40" height="40">
+                                    <path d="M12 2l2 7h7l-5.5 4 2 7L12 17l-5.5 3 2-7L3 9h7z"/>
+                              </svg>
+                              <p>点击「刷新推荐」，DeepSeek 将根据你的兴趣生成个性化内容</p>
+                              <button class="btn btn-primary" style="margin-top:12px" onclick="fetchRecommendations()">🔮 刷新推荐</button>
+                        </div>`;
+                        return;
+                  }
+
+                  // AI Insights panel: interest tags + recommended topics
+                  let html = '';
+
+                  if (data.query_summary) {
+                        html += `<div class="ai-overview" style="margin-bottom:12px">
+                              <strong style="color:var(--neon-cyan)">兴趣画像：</strong>${escapeHtml(data.query_summary)}
+                        </div>`;
+                  }
+
+                  if (data.interest_tags && data.interest_tags.length > 0) {
+                        html += `<div style="margin-bottom:12px">
+                              <div class="my-section-title">兴趣标签</div>
+                              <div class="interest-tags">${data.interest_tags.map(t => `<span class="interest-tag">${escapeHtml(t)}</span>`).join('')}</div>
+                        </div>`;
+                  }
+
+                  if (data.recommended_topics && data.recommended_topics.length > 0) {
+                        html += `<div class="my-section-title">为你推荐（${data.recommended_topics.length}条）</div>
+                        <div style="display:flex;flex-direction:column;gap:6px">`;
+                        for (const item of data.recommended_topics) {
+                              html += `<a class="recommend-topic-item" ${item.url ? `href="${escapeAttr(item.url)}" target="_blank" rel="noopener noreferrer"` : ''}>
+                                    <div class="recommend-topic-title">${escapeHtml(item.title)}</div>
+                                    <div class="recommend-topic-meta">
+                                          <span>${PLATFORM_NAMES[item.platform] || escapeHtml(item.platform || '')}</span>
+                                          ${item.reason ? `<span class="recommend-reason">· ${escapeHtml(item.reason)}</span>` : ''}
+                                    </div>
+                              </a>`;
+                        }
+                        html += '</div>';
+                  }
+
+                  html += `<button class="btn btn-primary" style="margin-top:14px;width:100%" onclick="fetchRecommendations()">🔮 刷新推荐</button>`;
+                  aiContainer.innerHTML = html;
+
+                  // Chat area: report + RSS articles
+                  const chatMessages = document.getElementById('chatMessages');
+                  if (chatMessages) {
+                        let chatHtml = '<div class="chat-msg ai"><strong>📊 个性化报告</strong><br>';
+                        chatHtml += data.report ? formatChatText(data.report) : '暂无报告';
+                        chatHtml += '</div>';
+
+                        if (data.fetched_articles && data.fetched_articles.length > 0) {
+                              chatHtml += `<div class="chat-msg ai"><strong>📰 关键词抓取（${data.fetched_articles.length}篇）</strong>
+                              <div class="articles-list" style="margin-top:8px">`;
+                              for (const a of data.fetched_articles) {
+                                    chatHtml += `<a class="article-item" href="${escapeAttr(a.url)}" target="_blank" rel="noopener noreferrer">
+                                          <div class="article-title">${escapeHtml(a.title)}</div>
+                                          <div class="article-meta">
+                                                <span class="article-kw-badge">${escapeHtml(a.keyword)}</span>
+                                                <span>${escapeHtml(a.source || '')}</span>
+                                          </div>
+                                    </a>`;
+                              }
+                              chatHtml += '</div></div>';
+                        }
+                        chatMessages.innerHTML = chatHtml;
+                        chatMessages.scrollTop = chatMessages.scrollHeight;
+                  }
+            }
+
             // ==================== AI ====================
             async function aiAnalyze() {
+                  if (currentPlatform === 'mine') {
+                        return fetchRecommendations();
+                  }
                   const btn = document.getElementById('btnAnalyze');
                   btn.classList.add('loading');
                   const container = document.getElementById('aiPanelContainer');
@@ -1819,15 +2596,32 @@
             }
 
             // ==================== CHAT ====================
+            // Convert lightweight markdown (bold + newlines) to safe HTML
+            function formatChatText(text) {
+                  return escapeHtml(text)
+                        .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
+                        .replace(/\n/g, '<br>');
+            }
+
             async function sendChat() {
                   const input = document.getElementById('chatInput');
                   const msg = input.value.trim();
                   if (!msg) return;
                   input.value = '';
+                  // Disable input while waiting
+                  input.disabled = true;
 
                   const messages = document.getElementById('chatMessages');
-                  messages.innerHTML += `<div class="chat-msg user">${escapeHtml(msg)}</div>`;
-                  messages.innerHTML += `<div class="chat-msg ai" id="chatPending"><div class="loading-skeleton"><div class="skeleton-line" style="height:10px"></div></div></div>`;
+                  const userDiv = document.createElement('div');
+                  userDiv.className = 'chat-msg user';
+                  userDiv.textContent = msg;
+                  messages.appendChild(userDiv);
+
+                  const pendingDiv = document.createElement('div');
+                  pendingDiv.className = 'chat-msg ai';
+                  pendingDiv.id = 'chatPending';
+                  pendingDiv.innerHTML = `<div class="chat-typing"><span></span><span></span><span></span></div>`;
+                  messages.appendChild(pendingDiv);
                   messages.scrollTop = messages.scrollHeight;
 
                   try {
@@ -1840,7 +2634,7 @@
                         const pending = document.getElementById('chatPending');
                         if (pending) {
                               pending.id = '';
-                              pending.innerHTML = escapeHtml(data.answer || '抱歉，我暂时无法回答这个问题。');
+                              pending.innerHTML = formatChatText(data.answer || '抱歉，我暂时无法回答这个问题。');
                         }
                   } catch (e) {
                         const pending = document.getElementById('chatPending');
@@ -1849,6 +2643,8 @@
                               pending.innerHTML = `<span style="color:var(--neon-red)">请求失败: ${escapeHtml(e.message)}</span>`;
                         }
                   }
+                  input.disabled = false;
+                  input.focus();
                   messages.scrollTop = messages.scrollHeight;
             }
 

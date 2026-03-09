@@ -18,8 +18,15 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
-from .database import init_db, save_topics, get_recent_topics, save_analysis, get_recent_analyses
-from .ai_service import analyze_hotspots, analyze_single_topic, chat_about_trends
+from .database import (
+    init_db, save_topics, get_recent_topics, save_analysis, get_recent_analyses,
+    init_preferences_tables,
+    save_like, delete_like, get_likes,
+    save_keyword, delete_keyword, get_keywords,
+    save_personal_articles, get_personal_articles,
+)
+from .ai_service import analyze_hotspots, analyze_single_topic, chat_about_trends, generate_personal_report
+from .sources.personal_feed import fetch_by_keywords as rss_fetch_by_keywords
 from .sources.weibo import WeiboSource
 from .sources.zhihu import ZhihuSource
 from .sources.baidu import BaiduSource
@@ -76,6 +83,7 @@ async def _preload_cache():
 async def lifespan(app: FastAPI):
     """应用生命周期"""
     await init_db()
+    await init_preferences_tables()
     print("🚀 AI Hot Research 服务已启动")
     # 预热缓存（后台，不阻塞启动）
     asyncio.create_task(_preload_cache())
@@ -112,6 +120,17 @@ class AnalyzeRequest(BaseModel):
 
 class ChatRequest(BaseModel):
     question: str
+
+class LikeRequest(BaseModel):
+    platform: str
+    title: str
+    url: str = ""
+
+class UnlikeRequest(BaseModel):
+    title: str
+
+class KeywordRequest(BaseModel):
+    keyword: str
 
 
 # ======================== API 路由 ========================
@@ -290,3 +309,112 @@ async def get_history(limit: int = Query(10, ge=1, le=50)):
         except (json.JSONDecodeError, TypeError):
             pass
     return {"analyses": analyses}
+
+
+# ======================== 个性化偏好 ========================
+
+@app.get("/api/preferences")
+async def get_preferences():
+    """获取用户所有偏好（收藏 + 关键词）"""
+    likes = await get_likes()
+    keywords = await get_keywords()
+    return {"likes": likes, "keywords": keywords}
+
+
+@app.post("/api/preferences/like")
+async def add_like(req: LikeRequest):
+    """收藏话题"""
+    await save_like(req.platform, req.title, req.url)
+    return {"status": "ok", "title": req.title}
+
+
+@app.post("/api/preferences/unlike")
+async def remove_like(req: UnlikeRequest):
+    """取消收藏"""
+    await delete_like(req.title)
+    return {"status": "ok", "title": req.title}
+
+
+@app.post("/api/preferences/keyword")
+async def add_keyword(req: KeywordRequest):
+    """添加关键词订阅"""
+    kw = req.keyword.strip()[:50]  # 最大50字符
+    if not kw:
+        raise HTTPException(status_code=400, detail="关键词不能为空")
+    await save_keyword(kw)
+    keywords = await get_keywords()
+    return {"status": "ok", "keywords": keywords}
+
+
+@app.delete("/api/preferences/keyword/{keyword_id}")
+async def remove_keyword(keyword_id: int):
+    """删除关键词订阅"""
+    await delete_keyword(keyword_id)
+    return {"status": "ok"}
+
+
+@app.get("/api/feed")
+async def get_feed(keywords: str = ""):
+    """轻量级外部新闻抓取（Google News / Bing RSS），供我的页面实时展示"""
+    kw_list = [k.strip() for k in keywords.split(",") if k.strip()][:10]
+    if not kw_list:
+        return {"articles": []}
+    articles = await rss_fetch_by_keywords(kw_list)
+    return {"articles": articles}
+
+
+@app.post("/api/recommend")
+async def get_recommendations():
+    """生成个性化推荐：筛选热点 + 爬取 RSS + AI 报告"""
+    likes = await get_likes()
+    keywords = await get_keywords()
+
+    if not likes and not keywords:
+        return {
+            "interest_tags": [],
+            "query_summary": "请先收藏话题或添加关键词来获取个性化推荐",
+            "recommended_topics": [],
+            "report": "",
+            "fetched_articles": [],
+        }
+
+    # 收集全部缓存话题
+    all_topics = []
+    for platform, topics in _cache["topics"].items():
+        for t in topics:
+            t_copy = dict(t)
+            t_copy["platform"] = platform
+            all_topics.append(t_copy)
+
+    keyword_values = [k["value"] for k in keywords]
+
+    # 并发：AI 分析 + RSS 抓取
+    ai_task = generate_personal_report(likes, keywords, all_topics)
+
+    async def _empty_rss():
+        return []
+
+    rss_task = rss_fetch_by_keywords(keyword_values) if keyword_values else _empty_rss()
+
+    ai_result, rss_articles = await asyncio.gather(ai_task, rss_task)
+
+    # 存储 RSS 文章到 DB
+    if rss_articles:
+        from collections import defaultdict
+        by_kw = defaultdict(list)
+        for a in rss_articles:
+            by_kw[a["keyword"]].append(a)
+        for kw, arts in by_kw.items():
+            await save_personal_articles(kw, arts)
+
+    # 保存 AI 分析结果
+    await save_analysis(
+        "personal_report",
+        json.dumps({"likes": len(likes), "keywords": keyword_values}, ensure_ascii=False),
+        json.dumps(ai_result, ensure_ascii=False)
+    )
+
+    return {
+        **ai_result,
+        "fetched_articles": rss_articles,
+    }
