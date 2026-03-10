@@ -369,7 +369,10 @@ async def ai_analyze_topic(req: AnalyzeRequest):
 
 @app.post("/api/chat")
 async def ai_chat(req: ChatRequest, authorization: Optional[str] = Header(None)):
-    """与 AI 对话讨论热点，已登录用户自动保存会话"""
+    """与 AI 对话讨论热点，需要登录"""
+    user = get_current_user(authorization)
+    if not user:
+        raise HTTPException(status_code=401, detail="请先登录后再使用 AI 功能")
     if not req.question:
         raise HTTPException(status_code=400, detail="请输入问题")
 
@@ -382,7 +385,6 @@ async def ai_chat(req: ChatRequest, authorization: Optional[str] = Header(None))
 
     answer = await chat_about_trends(req.question, all_topics)
 
-    user = get_current_user(authorization)
     session_id = req.session_id
 
     if user:

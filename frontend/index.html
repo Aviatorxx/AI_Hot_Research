@@ -1840,7 +1840,8 @@
                                                 </div>
                                                 <div class="chat-input-row">
                                                       <input class="chat-input" id="chatInput" type="text"
-                                                            placeholder="问我任何事情，全知全能..." aria-label="聊天输入"
+                                                            placeholder="请先登录后使用 AI 功能" aria-label="聊天输入"
+                                                            disabled
                                                             onkeydown="if(event.key==='Enter')sendChat()">
                                                       <button class="btn btn-primary" onclick="sendChat()"
                                                             aria-label="发送">
@@ -2856,6 +2857,10 @@
             }
 
             async function sendChat() {
+                  if (!authToken) {
+                        openLoginModal();
+                        return;
+                  }
                   const input = document.getElementById('chatInput');
                   const msg = input.value.trim();
                   if (!msg) return;
@@ -3086,6 +3091,17 @@
                         currentSessionId = null;
                         const titleEl = document.getElementById('sessionTitle');
                         if (titleEl) titleEl.textContent = '新对话';
+                  }
+                  // 根据登录状态更新聊天输入框
+                  const chatInput = document.getElementById('chatInput');
+                  if (chatInput) {
+                        if (currentUser) {
+                              chatInput.disabled = false;
+                              chatInput.placeholder = '问我任何事情，全知全能...';
+                        } else {
+                              chatInput.disabled = true;
+                              chatInput.placeholder = '请先登录后使用 AI 功能';
+                        }
                   }
             }
 
