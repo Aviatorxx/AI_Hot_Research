@@ -5,7 +5,8 @@
       <meta charset="UTF-8">
       <meta name="viewport" content="width=device-width, initial-scale=1.0">
       <title>AI Hot Research - 热点监控</title>
-      <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='6' fill='%230A0A0F'/%3E%3Ctext x='50%25' y='50%25' dominant-baseline='central' text-anchor='middle' font-size='20'%3E%F0%9F%94%A5%3C/text%3E%3C/svg%3E">
+      <link rel="icon" type="image/svg+xml"
+            href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='6' fill='%230A0A0F'/%3E%3Ctext x='50%25' y='50%25' dominant-baseline='central' text-anchor='middle' font-size='20'%3E%F0%9F%94%A5%3C/text%3E%3C/svg%3E">
       <link rel="preconnect" href="https://fonts.googleapis.com">
       <link href="https://fonts.googleapis.com/css2?family=Fira+Code:wght@400;500;600;700&family=Fira+Sans:wght@300;400;500;600;700&display=swap"
             rel="stylesheet">
@@ -1486,6 +1487,199 @@
                         grid-template-columns: 1fr;
                   }
             }
+
+            /* ============ AUTH & SESSION ============ */
+            .btn-login {
+                  padding: 6px 16px;
+                  font-size: 12px;
+                  background: rgba(0, 255, 255, 0.08);
+                  border: 1px solid rgba(0, 255, 255, 0.25);
+                  color: var(--neon-cyan);
+                  border-radius: var(--radius-sm);
+                  cursor: pointer;
+                  font-family: var(--font-mono);
+                  transition: all var(--transition);
+            }
+
+            .btn-login:hover {
+                  background: rgba(0, 255, 255, 0.15);
+                  box-shadow: var(--glow-cyan);
+            }
+
+            .user-badge {
+                  display: flex;
+                  align-items: center;
+                  gap: 8px;
+                  padding: 4px 12px;
+                  border: 1px solid var(--border-dim);
+                  border-radius: 20px;
+                  font-size: 12px;
+                  font-family: var(--font-mono);
+                  color: var(--neon-green);
+            }
+
+            .user-badge .logout-btn {
+                  background: none;
+                  border: none;
+                  color: var(--text-muted);
+                  cursor: pointer;
+                  font-size: 13px;
+                  padding: 0;
+                  line-height: 1;
+                  transition: color var(--transition);
+            }
+
+            .user-badge .logout-btn:hover {
+                  color: var(--neon-red);
+            }
+
+            .chat-session-bar {
+                  display: flex;
+                  align-items: center;
+                  justify-content: space-between;
+                  padding: 4px 0 8px;
+                  border-bottom: 1px solid var(--border-dim);
+                  margin-bottom: 6px;
+            }
+
+            .login-modal-overlay {
+                  position: fixed;
+                  inset: 0;
+                  background: rgba(0, 0, 0, 0.75);
+                  backdrop-filter: blur(8px);
+                  z-index: 300;
+                  display: flex;
+                  align-items: center;
+                  justify-content: center;
+                  padding: 20px;
+                  opacity: 0;
+                  visibility: hidden;
+                  transition: all 0.2s ease;
+            }
+
+            .login-modal-overlay.active {
+                  opacity: 1;
+                  visibility: visible;
+            }
+
+            .login-modal {
+                  background: var(--bg-card);
+                  border: 1px solid rgba(0, 255, 255, 0.2);
+                  border-radius: var(--radius);
+                  width: 100%;
+                  max-width: 380px;
+                  transform: translateY(10px) scale(0.98);
+                  transition: transform 0.2s ease;
+            }
+
+            .login-modal-overlay.active .login-modal {
+                  transform: translateY(0) scale(1);
+            }
+
+            .auth-tabs {
+                  display: flex;
+                  border-bottom: 1px solid var(--border-dim);
+            }
+
+            .auth-tab {
+                  flex: 1;
+                  padding: 12px;
+                  background: none;
+                  border: none;
+                  font-family: var(--font-mono);
+                  font-size: 13px;
+                  color: var(--text-muted);
+                  cursor: pointer;
+                  border-bottom: 2px solid transparent;
+                  margin-bottom: -1px;
+                  transition: all var(--transition);
+            }
+
+            .auth-tab.active {
+                  color: var(--neon-cyan);
+                  border-bottom-color: var(--neon-cyan);
+            }
+
+            .auth-form {
+                  padding: 20px;
+                  display: flex;
+                  flex-direction: column;
+                  gap: 12px;
+            }
+
+            .auth-input {
+                  width: 100%;
+                  box-sizing: border-box;
+                  padding: 10px 14px;
+                  background: var(--bg-surface);
+                  border: 1px solid var(--border-dim);
+                  border-radius: var(--radius-sm);
+                  color: var(--text-primary);
+                  font-family: var(--font-sans);
+                  font-size: 14px;
+                  outline: none;
+                  transition: border-color var(--transition);
+            }
+
+            .auth-input:focus {
+                  border-color: var(--neon-cyan);
+            }
+
+            .auth-error {
+                  font-size: 12px;
+                  color: var(--neon-red);
+                  min-height: 16px;
+                  font-family: var(--font-mono);
+            }
+
+            .history-session-item {
+                  display: flex;
+                  align-items: center;
+                  justify-content: space-between;
+                  padding: 8px 10px;
+                  border: 1px solid var(--border-dim);
+                  border-radius: var(--radius-sm);
+                  background: var(--bg-surface);
+                  cursor: pointer;
+                  transition: all var(--transition);
+            }
+
+            .history-session-item:hover {
+                  border-color: rgba(0, 255, 255, 0.2);
+                  background: var(--bg-card-hover);
+            }
+
+            .history-session-title {
+                  font-size: 13px;
+                  color: var(--text-primary);
+                  white-space: nowrap;
+                  overflow: hidden;
+                  text-overflow: ellipsis;
+                  flex: 1;
+            }
+
+            .history-session-meta {
+                  font-size: 11px;
+                  color: var(--text-muted);
+                  font-family: var(--font-mono);
+                  flex-shrink: 0;
+                  margin-left: 8px;
+            }
+
+            .history-del-btn {
+                  background: none;
+                  border: none;
+                  color: var(--text-muted);
+                  cursor: pointer;
+                  font-size: 14px;
+                  padding: 0 0 0 6px;
+                  flex-shrink: 0;
+                  transition: color var(--transition);
+            }
+
+            .history-del-btn:hover {
+                  color: var(--neon-red);
+            }
       </style>
 </head>
 
@@ -1530,6 +1724,10 @@
                               </svg>
                               AI 分析
                         </button>
+                        <!-- Auth area -->
+                        <div id="authArea">
+                              <button class="btn-login" id="loginBtn" onclick="openLoginModal()">登录</button>
+                        </div>
                   </div>
             </nav>
 
@@ -1629,6 +1827,13 @@
                                     <!-- Inline AI Chat — shown only on 我的 tab -->
                                     <div id="myChatSection" class="my-chat-section" style="display:none">
                                           <div class="chat-container">
+                                                <!-- Session bar (visible when logged in) -->
+                                                <div class="chat-session-bar" id="chatSessionBar" style="display:none">
+                                                      <span id="sessionTitle"
+                                                            style="font-size:12px;color:var(--text-muted);font-family:var(--font-mono)">新对话</span>
+                                                      <button class="btn" onclick="newChatSession()"
+                                                            style="padding:3px 10px;font-size:11px">＋ 新对话</button>
+                                                </div>
                                                 <div class="chat-messages" id="chatMessages">
                                                       <div class="chat-msg ai">你好！我是全能 AI 助手，实时获取热搜 +
                                                             联网搜索，随时回答你的问题——新闻、科技、文化、百科……问我就对了！</div>
@@ -1714,7 +1919,7 @@
       <!-- TOAST CONTAINER -->
       <div class="toast-container" id="toastContainer"></div>
 
-      <!-- MODAL -->
+      <!-- TOPIC ANALYSIS MODAL -->
       <div class="modal-overlay" id="modalOverlay" onclick="if(event.target===this)closeModal()">
             <div class="modal" role="dialog" aria-modal="true">
                   <div class="modal-header">
@@ -1728,6 +1933,25 @@
                         </button>
                   </div>
                   <div class="modal-body" id="modalBody"></div>
+            </div>
+      </div>
+
+      <!-- LOGIN MODAL -->
+      <div class="login-modal-overlay" id="loginModalOverlay" onclick="if(event.target===this)closeLoginModal()">
+            <div class="login-modal" role="dialog" aria-modal="true" aria-label="登录 / 注册">
+                  <div class="auth-tabs">
+                        <button class="auth-tab active" id="authTabLogin" onclick="switchAuthTab('login')">登录</button>
+                        <button class="auth-tab" id="authTabRegister" onclick="switchAuthTab('register')">注册</button>
+                  </div>
+                  <div class="auth-form">
+                        <input class="auth-input" id="authUsername" type="text" placeholder="用户名"
+                              autocomplete="username" onkeydown="if(event.key==='Enter')submitAuth()">
+                        <input class="auth-input" id="authPassword" type="password" placeholder="密码"
+                              autocomplete="current-password" onkeydown="if(event.key==='Enter')submitAuth()">
+                        <div class="auth-error" id="authError"></div>
+                        <button class="btn btn-primary" id="authSubmitBtn" onclick="submitAuth()"
+                              style="width:100%;justify-content:center">登录</button>
+                  </div>
             </div>
       </div>
 
@@ -1754,6 +1978,12 @@
             let myKeywords = []; // [{id, value}] — synced from backend
             let myRecommendData = null; // last recommend API result
 
+            // Auth
+            let authToken = localStorage.getItem('authToken') || null;
+            let currentUser = null;  // {id, username}
+            let currentSessionId = null;
+            let _authTab = 'login';
+
             const PLATFORM_NAMES = {
                   weibo: '微博热搜', zhihu: '知乎热榜', baidu: '百度热搜',
                   douyin: '抖音热点', bilibili: 'B站热门',
@@ -1768,7 +1998,8 @@
             };
 
             // ==================== INIT ====================
-            document.addEventListener('DOMContentLoaded', () => {
+            document.addEventListener('DOMContentLoaded', async () => {
+                  await verifyStoredToken();
                   loadPreferences();
                   refreshData();
                   startAutoRefresh();
@@ -2043,7 +2274,9 @@
             async function loadPreferences() {
                   // Load from backend DB (source of truth)
                   try {
-                        const res = await fetch(`${API}/api/preferences`);
+                        const headers = {};
+                        if (authToken) headers['Authorization'] = `Bearer ${authToken}`;
+                        const res = await fetch(`${API}/api/preferences`, { headers });
                         const data = await res.json();
                         // Rebuild myLikes map
                         myLikes = {};
@@ -2059,18 +2292,20 @@
 
             async function toggleLike(event, title, platform, url) {
                   const isLiked = !!myLikes[title];
+                  const authHeaders = { 'Content-Type': 'application/json' };
+                  if (authToken) authHeaders['Authorization'] = `Bearer ${authToken}`;
                   if (isLiked) {
                         delete myLikes[title];
                         fetch(`${API}/api/preferences/unlike`, {
                               method: 'POST',
-                              headers: { 'Content-Type': 'application/json' },
+                              headers: authHeaders,
                               body: JSON.stringify({ title })
                         }).catch(() => { });
                   } else {
                         myLikes[title] = { platform, url };
                         fetch(`${API}/api/preferences/like`, {
                               method: 'POST',
-                              headers: { 'Content-Type': 'application/json' },
+                              headers: authHeaders,
                               body: JSON.stringify({ platform, title, url })
                         }).catch(() => { });
                   }
@@ -2090,9 +2325,11 @@
                   if (!kw) return;
                   input.value = '';
                   try {
+                        const headers = { 'Content-Type': 'application/json' };
+                        if (authToken) headers['Authorization'] = `Bearer ${authToken}`;
                         const res = await fetch(`${API}/api/preferences/keyword`, {
                               method: 'POST',
-                              headers: { 'Content-Type': 'application/json' },
+                              headers,
                               body: JSON.stringify({ keyword: kw })
                         });
                         const data = await res.json();
@@ -2107,7 +2344,9 @@
             async function removeKeyword(id) {
                   myKeywords = myKeywords.filter(k => k.id !== id);
                   renderMyPage();
-                  fetch(`${API}/api/preferences/keyword/${id}`, { method: 'DELETE' }).catch(() => { });
+                  const headers = {};
+                  if (authToken) headers['Authorization'] = `Bearer ${authToken}`;
+                  fetch(`${API}/api/preferences/keyword/${id}`, { method: 'DELETE', headers }).catch(() => { });
             }
 
             function renderKeywordTags() {
@@ -2261,11 +2500,22 @@
 
                   html += `</div>`; // discover wrapper
 
+                  // 历史会话 section (logged in users only)
+                  if (currentUser) {
+                        html += `<div id="chatHistorySection">
+                              <div class="my-section-title" style="margin-top:8px">💬 历史会话</div>
+                              <div id="chatHistoryList"><div style="font-size:12px;color:var(--text-muted)">加载中...</div></div>
+                        </div>`;
+                  }
+
                   html += '</div>';
                   container.innerHTML = html;
 
                   // Render keyword tags after HTML is injected
                   renderKeywordTags();
+
+                  // Load chat history
+                  if (currentUser) loadChatSessions();
 
                   // Render AI/Articles panel
                   renderRecommendPanel(myRecommendData);
@@ -2321,9 +2571,11 @@
 
             function deleteLikeAndRefresh(title) {
                   delete myLikes[title];
+                  const headers = { 'Content-Type': 'application/json' };
+                  if (authToken) headers['Authorization'] = `Bearer ${authToken}`;
                   fetch(`${API}/api/preferences/unlike`, {
                         method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
+                        headers,
                         body: JSON.stringify({ title })
                   }).catch(() => { });
                   updatePlatformTabs();
@@ -2625,16 +2877,24 @@
                   messages.scrollTop = messages.scrollHeight;
 
                   try {
+                        const headers = { 'Content-Type': 'application/json' };
+                        if (authToken) headers['Authorization'] = `Bearer ${authToken}`;
                         const res = await fetch(`${API}/api/chat`, {
                               method: 'POST',
-                              headers: { 'Content-Type': 'application/json' },
-                              body: JSON.stringify({ question: msg })
+                              headers,
+                              body: JSON.stringify({ question: msg, session_id: currentSessionId })
                         });
                         const data = await res.json();
                         const pending = document.getElementById('chatPending');
                         if (pending) {
                               pending.id = '';
                               pending.innerHTML = formatChatText(data.answer || '抱歉，我暂时无法回答这个问题。');
+                        }
+                        // Track session
+                        if (data.session_id && data.session_id !== currentSessionId) {
+                              currentSessionId = data.session_id;
+                              const titleEl = document.getElementById('sessionTitle');
+                              if (titleEl) titleEl.textContent = msg.slice(0, 20) + (msg.length > 20 ? '…' : '');
                         }
                   } catch (e) {
                         const pending = document.getElementById('chatPending');
@@ -2743,6 +3003,191 @@
 
             function escapeAttr(str) {
                   return (str || '').replace(/'/g, "\\'").replace(/"/g, '&quot;');
+            }
+
+            // ==================== AUTH ====================
+
+            function openLoginModal() {
+                  switchAuthTab(_authTab);
+                  document.getElementById('authError').textContent = '';
+                  document.getElementById('authUsername').value = '';
+                  document.getElementById('authPassword').value = '';
+                  document.getElementById('loginModalOverlay').classList.add('active');
+                  setTimeout(() => document.getElementById('authUsername').focus(), 100);
+            }
+
+            function closeLoginModal() {
+                  document.getElementById('loginModalOverlay').classList.remove('active');
+            }
+
+            function switchAuthTab(tab) {
+                  _authTab = tab;
+                  document.getElementById('authTabLogin').classList.toggle('active', tab === 'login');
+                  document.getElementById('authTabRegister').classList.toggle('active', tab === 'register');
+                  document.getElementById('authSubmitBtn').textContent = tab === 'login' ? '登录' : '注册';
+                  document.getElementById('authError').textContent = '';
+                  document.getElementById('authPassword').autocomplete = tab === 'login' ? 'current-password' : 'new-password';
+            }
+
+            async function submitAuth() {
+                  const username = document.getElementById('authUsername').value.trim();
+                  const password = document.getElementById('authPassword').value;
+                  const errorEl = document.getElementById('authError');
+                  errorEl.textContent = '';
+                  if (!username || !password) { errorEl.textContent = '请输入用户名和密码'; return; }
+
+                  const endpoint = _authTab === 'login' ? '/api/auth/login' : '/api/auth/register';
+                  try {
+                        const res = await fetch(`${API}${endpoint}`, {
+                              method: 'POST',
+                              headers: { 'Content-Type': 'application/json' },
+                              body: JSON.stringify({ username, password })
+                        });
+                        const data = await res.json();
+                        if (!res.ok) { errorEl.textContent = data.detail || '操作失败'; return; }
+                        authToken = data.token;
+                        localStorage.setItem('authToken', authToken);
+                        currentUser = { username: data.username };
+                        closeLoginModal();
+                        updateAuthUI();
+                        await loadPreferences();
+                        if (currentPlatform === 'mine') renderMyPage();
+                        showToast(`欢迎，${data.username}！`, 'success');
+                  } catch (e) {
+                        errorEl.textContent = '网络错误: ' + e.message;
+                  }
+            }
+
+            function logout() {
+                  authToken = null;
+                  currentUser = null;
+                  currentSessionId = null;
+                  localStorage.removeItem('authToken');
+                  myLikes = {};
+                  myKeywords = [];
+                  updateAuthUI();
+                  loadPreferences();
+                  if (currentPlatform === 'mine') renderMyPage();
+                  showToast('已退出登录', 'info');
+            }
+
+            function updateAuthUI() {
+                  const area = document.getElementById('authArea');
+                  const sessionBar = document.getElementById('chatSessionBar');
+                  if (currentUser) {
+                        area.innerHTML = `<div class="user-badge">
+                              <span>${escapeHtml(currentUser.username)}</span>
+                              <button class="logout-btn" onclick="logout()" title="退出登录">✕</button>
+                        </div>`;
+                        if (sessionBar) sessionBar.style.display = 'flex';
+                  } else {
+                        area.innerHTML = `<button class="btn-login" id="loginBtn" onclick="openLoginModal()">登录</button>`;
+                        if (sessionBar) sessionBar.style.display = 'none';
+                        currentSessionId = null;
+                        const titleEl = document.getElementById('sessionTitle');
+                        if (titleEl) titleEl.textContent = '新对话';
+                  }
+            }
+
+            async function verifyStoredToken() {
+                  if (!authToken) return;
+                  try {
+                        const res = await fetch(`${API}/api/auth/me`, {
+                              headers: { 'Authorization': `Bearer ${authToken}` }
+                        });
+                        if (res.ok) {
+                              const data = await res.json();
+                              currentUser = { id: data.id, username: data.username };
+                        } else {
+                              authToken = null;
+                              localStorage.removeItem('authToken');
+                        }
+                  } catch (e) {
+                        // Network error, keep token for retry
+                  }
+                  updateAuthUI();
+            }
+
+            function newChatSession() {
+                  currentSessionId = null;
+                  const titleEl = document.getElementById('sessionTitle');
+                  if (titleEl) titleEl.textContent = '新对话';
+                  const chatMessages = document.getElementById('chatMessages');
+                  chatMessages.innerHTML = '<div class="chat-msg ai">你好！我是全能 AI 助手，实时获取热搜 + 联网搜索，随时回答你的问题——新闻、科技、文化、百科……问我就对了！</div>';
+            }
+
+            async function loadChatSessions() {
+                  const container = document.getElementById('chatHistoryList');
+                  if (!container || !authToken) return;
+                  try {
+                        const res = await fetch(`${API}/api/chat/sessions`, {
+                              headers: { 'Authorization': `Bearer ${authToken}` }
+                        });
+                        if (!res.ok) return;
+                        const data = await res.json();
+                        renderChatHistory(data.sessions || []);
+                  } catch (e) {
+                        if (container) container.innerHTML = '<div style="font-size:12px;color:var(--text-muted)">加载失败</div>';
+                  }
+            }
+
+            function renderChatHistory(sessions) {
+                  const container = document.getElementById('chatHistoryList');
+                  if (!container) return;
+                  if (sessions.length === 0) {
+                        container.innerHTML = '<div style="font-size:12px;color:var(--text-muted);padding:4px 0">暂无历史会话</div>';
+                        return;
+                  }
+                  let html = '<div style="display:flex;flex-direction:column;gap:6px">';
+                  for (const s of sessions) {
+                        const date = s.created_at ? new Date(s.created_at).toLocaleString('zh-CN', { month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit' }) : '';
+                        html += `<div class="history-session-item" onclick="restoreSession(${s.id}, '${escapeAttr(s.title || '对话')}')">
+                              <span class="history-session-title">${escapeHtml(s.title || '对话')}</span>
+                              <span class="history-session-meta">${date}</span>
+                              <button class="history-del-btn" onclick="event.stopPropagation();deleteSession(${s.id})" title="删除">×</button>
+                        </div>`;
+                  }
+                  html += '</div>';
+                  container.innerHTML = html;
+            }
+
+            async function restoreSession(sessionId, title) {
+                  if (!authToken) return;
+                  try {
+                        const res = await fetch(`${API}/api/chat/sessions/${sessionId}/messages`, {
+                              headers: { 'Authorization': `Bearer ${authToken}` }
+                        });
+                        if (!res.ok) return;
+                        const data = await res.json();
+                        currentSessionId = sessionId;
+                        const titleEl = document.getElementById('sessionTitle');
+                        if (titleEl) titleEl.textContent = title;
+                        const chatMessages = document.getElementById('chatMessages');
+                        let html = '';
+                        for (const m of (data.messages || [])) {
+                              const cls = m.role === 'user' ? 'user' : 'ai';
+                              html += `<div class="chat-msg ${cls}">${cls === 'ai' ? formatChatText(m.content) : escapeHtml(m.content)}</div>`;
+                        }
+                        if (!html) html = '<div class="chat-msg ai">（此会话暂无消息）</div>';
+                        chatMessages.innerHTML = html;
+                        chatMessages.scrollTop = chatMessages.scrollHeight;
+                  } catch (e) {
+                        showToast('加载会话失败', 'error');
+                  }
+            }
+
+            async function deleteSession(sessionId) {
+                  if (!authToken) return;
+                  try {
+                        await fetch(`${API}/api/chat/sessions/${sessionId}`, {
+                              method: 'DELETE',
+                              headers: { 'Authorization': `Bearer ${authToken}` }
+                        });
+                        if (currentSessionId === sessionId) newChatSession();
+                        loadChatSessions();
+                  } catch (e) {
+                        showToast('删除失败', 'error');
+                  }
             }
       </script>
 

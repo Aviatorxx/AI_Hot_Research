@@ -6,24 +6,30 @@ AI Hot Research - FastAPI 主入口
 import asyncio
 import json
 import os
-from datetime import datetime
+from datetime import datetime, timedelta
 from contextlib import asynccontextmanager
+from typing import Optional
 
-from fastapi import FastAPI, Query, HTTPException
+from fastapi import FastAPI, Query, HTTPException, Header
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse, JSONResponse
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from dotenv import load_dotenv
+from jose import jwt, JWTError
+from passlib.context import CryptContext
 
 load_dotenv()
 
 from .database import (
-    init_db, save_topics, get_recent_topics, save_analysis, get_recent_analyses,
-    init_preferences_tables,
+    init_db,
+    save_topics, get_recent_topics, save_analysis, get_recent_analyses,
     save_like, delete_like, get_likes,
     save_keyword, delete_keyword, get_keywords,
     save_personal_articles, get_personal_articles,
+    create_user, get_user_by_name, count_users, migrate_preferences_to_user,
+    create_chat_session, update_session_title, save_chat_message,
+    get_chat_sessions, get_session_messages, delete_chat_session,
 )
 from .ai_service import analyze_hotspots, analyze_single_topic, chat_about_trends, generate_personal_report
 from .sources.personal_feed import fetch_by_keywords as rss_fetch_by_keywords
@@ -61,6 +67,31 @@ CACHE_TTL = 300  # 5 分钟缓存
 SOURCE_TIMEOUT = 8  # 单源超时（秒）
 _bg_refresh_lock = asyncio.Lock()
 
+# ======================== 认证配置 ========================
+
+JWT_SECRET = os.getenv("JWT_SECRET", "changeme-please-set-in-env")
+JWT_ALGORITHM = "HS256"
+JWT_EXPIRE_HOURS = 24
+
+pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
+
+
+def _create_token(user_id: int, username: str) -> str:
+    expire = datetime.utcnow() + timedelta(hours=JWT_EXPIRE_HOURS)
+    return jwt.encode({"sub": str(user_id), "username": username, "exp": expire}, JWT_SECRET, algorithm=JWT_ALGORITHM)
+
+
+def get_current_user(authorization: Optional[str] = Header(None)) -> Optional[dict]:
+    """软认证：有效 token 返回用户信息，否则返回 None（不抛出错误）"""
+    if not authorization or not authorization.startswith("Bearer "):
+        return None
+    token = authorization[7:]
+    try:
+        payload = jwt.decode(token, JWT_SECRET, algorithms=[JWT_ALGORITHM])
+        return {"id": int(payload["sub"]), "username": payload["username"]}
+    except (JWTError, KeyError, ValueError):
+        return None
+
 
 async def _preload_cache():
     """启动时预热缓存，用户进入页面时秒开"""
@@ -83,7 +114,6 @@ async def _preload_cache():
 async def lifespan(app: FastAPI):
     """应用生命周期"""
     await init_db()
-    await init_preferences_tables()
     print("🚀 AI Hot Research 服务已启动")
     # 预热缓存（后台，不阻塞启动）
     asyncio.create_task(_preload_cache())
@@ -120,6 +150,7 @@ class AnalyzeRequest(BaseModel):
 
 class ChatRequest(BaseModel):
     question: str
+    session_id: Optional[int] = None
 
 class LikeRequest(BaseModel):
     platform: str
@@ -132,6 +163,14 @@ class UnlikeRequest(BaseModel):
 class KeywordRequest(BaseModel):
     keyword: str
 
+class RegisterRequest(BaseModel):
+    username: str
+    password: str
+
+class LoginRequest(BaseModel):
+    username: str
+    password: str
+
 
 # ======================== API 路由 ========================
 
@@ -142,6 +181,52 @@ async def index():
     if os.path.exists(index_path):
         return FileResponse(index_path)
     return {"message": "AI Hot Research API", "docs": "/docs"}
+
+
+# ======================== 认证路由 ========================
+
+@app.post("/api/auth/register")
+async def register(req: RegisterRequest):
+    """注册新用户（最多2人）"""
+    username = req.username.strip()
+    if not username or len(username) > 32:
+        raise HTTPException(status_code=400, detail="用户名需为1-32个字符")
+    if len(req.password) < 4:
+        raise HTTPException(status_code=400, detail="密码至少4个字符")
+    if await get_user_by_name(username):
+        raise HTTPException(status_code=400, detail="用户名已存在")
+    existing_count = await count_users()
+    if existing_count >= 2:
+        raise HTTPException(status_code=403, detail="注册已关闭")
+
+    password_hash = pwd_context.hash(req.password)
+    user = await create_user(username, password_hash)
+
+    # 第一个用户继承未关联的历史偏好数据
+    if existing_count == 0:
+        await migrate_preferences_to_user(user["id"])
+
+    token = _create_token(user["id"], user["username"])
+    return {"token": token, "username": user["username"]}
+
+
+@app.post("/api/auth/login")
+async def login(req: LoginRequest):
+    """用户登录，返回 JWT"""
+    user = await get_user_by_name(req.username.strip())
+    if not user or not pwd_context.verify(req.password, user["password_hash"]):
+        raise HTTPException(status_code=401, detail="用户名或密码错误")
+    token = _create_token(user["id"], user["username"])
+    return {"token": token, "username": user["username"]}
+
+
+@app.get("/api/auth/me")
+async def auth_me(authorization: Optional[str] = Header(None)):
+    """验证 token，返回当前用户信息"""
+    user = get_current_user(authorization)
+    if not user:
+        raise HTTPException(status_code=401, detail="未登录或 token 无效")
+    return {"id": user["id"], "username": user["username"]}
 
 
 @app.get("/api/platforms")
@@ -283,8 +368,8 @@ async def ai_analyze_topic(req: AnalyzeRequest):
 
 
 @app.post("/api/chat")
-async def ai_chat(req: ChatRequest):
-    """与 AI 对话讨论热点"""
+async def ai_chat(req: ChatRequest, authorization: Optional[str] = Header(None)):
+    """与 AI 对话讨论热点，已登录用户自动保存会话"""
     if not req.question:
         raise HTTPException(status_code=400, detail="请输入问题")
 
@@ -296,7 +381,62 @@ async def ai_chat(req: ChatRequest):
             all_topics.append(t_copy)
 
     answer = await chat_about_trends(req.question, all_topics)
-    return {"answer": answer}
+
+    user = get_current_user(authorization)
+    session_id = req.session_id
+
+    if user:
+        if not session_id:
+            # 用问题前20字作为标题
+            title = req.question[:20] + ("…" if len(req.question) > 20 else "")
+            session_id = await create_chat_session(user["id"], title)
+        await save_chat_message(session_id, "user", req.question)
+        await save_chat_message(session_id, "assistant", answer)
+
+    return {"answer": answer, "session_id": session_id}
+
+
+# ======================== 聊天历史路由 ========================
+
+@app.get("/api/chat/sessions")
+async def list_chat_sessions(authorization: Optional[str] = Header(None)):
+    """获取当前用户的会话列表"""
+    user = get_current_user(authorization)
+    if not user:
+        raise HTTPException(status_code=401, detail="请先登录")
+    sessions = await get_chat_sessions(user["id"])
+    # 序列化 datetime
+    for s in sessions:
+        if hasattr(s.get("created_at"), "isoformat"):
+            s["created_at"] = s["created_at"].isoformat()
+    return {"sessions": sessions}
+
+
+@app.get("/api/chat/sessions/{session_id}/messages")
+async def get_session(session_id: int, authorization: Optional[str] = Header(None)):
+    """获取指定会话的消息列表"""
+    user = get_current_user(authorization)
+    if not user:
+        raise HTTPException(status_code=401, detail="请先登录")
+    # 验证会话属于该用户
+    sessions = await get_chat_sessions(user["id"], limit=200)
+    if not any(s["id"] == session_id for s in sessions):
+        raise HTTPException(status_code=404, detail="会话不存在")
+    messages = await get_session_messages(session_id)
+    for m in messages:
+        if hasattr(m.get("created_at"), "isoformat"):
+            m["created_at"] = m["created_at"].isoformat()
+    return {"messages": messages}
+
+
+@app.delete("/api/chat/sessions/{session_id}")
+async def remove_session(session_id: int, authorization: Optional[str] = Header(None)):
+    """删除指定会话"""
+    user = get_current_user(authorization)
+    if not user:
+        raise HTTPException(status_code=401, detail="请先登录")
+    await delete_chat_session(session_id, user["id"])
+    return {"status": "ok"}
 
 
 @app.get("/api/history")
@@ -314,42 +454,52 @@ async def get_history(limit: int = Query(10, ge=1, le=50)):
 # ======================== 个性化偏好 ========================
 
 @app.get("/api/preferences")
-async def get_preferences():
+async def get_preferences(authorization: Optional[str] = Header(None)):
     """获取用户所有偏好（收藏 + 关键词）"""
-    likes = await get_likes()
-    keywords = await get_keywords()
-    return {"likes": likes, "keywords": keywords}
+    user = get_current_user(authorization)
+    user_id = user["id"] if user else None
+    likes = await get_likes(user_id)
+    keywords = await get_keywords(user_id)
+    return {"likes": likes, "keywords": keywords, "logged_in": user is not None}
 
 
 @app.post("/api/preferences/like")
-async def add_like(req: LikeRequest):
+async def add_like(req: LikeRequest, authorization: Optional[str] = Header(None)):
     """收藏话题"""
-    await save_like(req.platform, req.title, req.url)
+    user = get_current_user(authorization)
+    user_id = user["id"] if user else None
+    await save_like(req.platform, req.title, req.url, user_id)
     return {"status": "ok", "title": req.title}
 
 
 @app.post("/api/preferences/unlike")
-async def remove_like(req: UnlikeRequest):
+async def remove_like(req: UnlikeRequest, authorization: Optional[str] = Header(None)):
     """取消收藏"""
-    await delete_like(req.title)
+    user = get_current_user(authorization)
+    user_id = user["id"] if user else None
+    await delete_like(req.title, user_id)
     return {"status": "ok", "title": req.title}
 
 
 @app.post("/api/preferences/keyword")
-async def add_keyword(req: KeywordRequest):
+async def add_keyword(req: KeywordRequest, authorization: Optional[str] = Header(None)):
     """添加关键词订阅"""
-    kw = req.keyword.strip()[:50]  # 最大50字符
+    kw = req.keyword.strip()[:50]
     if not kw:
         raise HTTPException(status_code=400, detail="关键词不能为空")
-    await save_keyword(kw)
-    keywords = await get_keywords()
+    user = get_current_user(authorization)
+    user_id = user["id"] if user else None
+    await save_keyword(kw, user_id)
+    keywords = await get_keywords(user_id)
     return {"status": "ok", "keywords": keywords}
 
 
 @app.delete("/api/preferences/keyword/{keyword_id}")
-async def remove_keyword(keyword_id: int):
+async def remove_keyword(keyword_id: int, authorization: Optional[str] = Header(None)):
     """删除关键词订阅"""
-    await delete_keyword(keyword_id)
+    user = get_current_user(authorization)
+    user_id = user["id"] if user else None
+    await delete_keyword(keyword_id, user_id)
     return {"status": "ok"}
 
 
@@ -364,10 +514,12 @@ async def get_feed(keywords: str = ""):
 
 
 @app.post("/api/recommend")
-async def get_recommendations():
+async def get_recommendations(authorization: Optional[str] = Header(None)):
     """生成个性化推荐：筛选热点 + 爬取 RSS + AI 报告"""
-    likes = await get_likes()
-    keywords = await get_keywords()
+    user = get_current_user(authorization)
+    user_id = user["id"] if user else None
+    likes = await get_likes(user_id)
+    keywords = await get_keywords(user_id)
 
     if not likes and not keywords:
         return {
