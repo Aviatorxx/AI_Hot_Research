@@ -2626,7 +2626,7 @@
                   aiContainer.innerHTML = '<div class="loading-skeleton"><div class="skeleton-line"></div><div class="skeleton-line"></div><div class="skeleton-line"></div></div>';
 
                   try {
-                        const res = await fetch(`${API}/api/recommend`, { method: 'POST' });
+                        const res = await fetch(`${API}/api/recommend`, { method: 'POST', headers: authToken ? { 'Authorization': `Bearer ${authToken}` } : {} });
                         if (!res.ok) throw new Error('推荐请求失败');
                         const data = await res.json();
                         myRecommendData = data;

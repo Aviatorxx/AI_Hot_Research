@@ -523,15 +523,6 @@ async def get_recommendations(authorization: Optional[str] = Header(None)):
     likes = await get_likes(user_id)
     keywords = await get_keywords(user_id)
 
-    if not likes and not keywords:
-        return {
-            "interest_tags": [],
-            "query_summary": "请先收藏话题或添加关键词来获取个性化推荐",
-            "recommended_topics": [],
-            "report": "",
-            "fetched_articles": [],
-        }
-
     # 收集全部缓存话题
     all_topics = []
     for platform, topics in _cache["topics"].items():
