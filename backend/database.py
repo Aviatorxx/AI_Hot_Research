@@ -65,6 +65,18 @@ async def init_db():
                 created_at TIMESTAMP DEFAULT NOW()
             )
         """)
+        await conn.execute("""
+            ALTER TABLE users
+            ADD COLUMN IF NOT EXISTS nickname TEXT
+        """)
+        await conn.execute("""
+            ALTER TABLE users
+            ADD COLUMN IF NOT EXISTS avatar_preset TEXT
+        """)
+        await conn.execute("""
+            ALTER TABLE users
+            ADD COLUMN IF NOT EXISTS avatar_data TEXT
+        """)
         # 用户偏好（含 user_id）
         await conn.execute("""
             CREATE TABLE IF NOT EXISTS user_preferences (
@@ -197,7 +209,7 @@ async def create_user(username: str, password_hash: str) -> dict:
         row = await conn.fetchrow(
             """INSERT INTO users (username, password_hash)
                VALUES ($1, $2)
-               RETURNING id, username, created_at""",
+               RETURNING id, username, nickname, avatar_preset, avatar_data, created_at""",
             username, password_hash
         )
         return dict(row)
@@ -208,8 +220,47 @@ async def get_user_by_name(username: str) -> Optional[dict]:
     pool = await get_pool()
     async with pool.acquire() as conn:
         row = await conn.fetchrow(
-            "SELECT id, username, password_hash FROM users WHERE username = $1",
+            """SELECT id, username, password_hash, nickname, avatar_preset, avatar_data, created_at
+               FROM users
+               WHERE username = $1""",
             username
+        )
+        return dict(row) if row else None
+
+
+async def get_user_by_id(user_id: int) -> Optional[dict]:
+    """按用户 ID 查找用户资料"""
+    pool = await get_pool()
+    async with pool.acquire() as conn:
+        row = await conn.fetchrow(
+            """SELECT id, username, nickname, avatar_preset, avatar_data, created_at
+               FROM users
+               WHERE id = $1""",
+            user_id,
+        )
+        return dict(row) if row else None
+
+
+async def update_user_profile(
+    user_id: int,
+    nickname: Optional[str],
+    avatar_preset: Optional[str],
+    avatar_data: Optional[str],
+) -> Optional[dict]:
+    """更新用户资料并返回最新资料"""
+    pool = await get_pool()
+    async with pool.acquire() as conn:
+        row = await conn.fetchrow(
+            """UPDATE users
+               SET nickname = $2,
+                   avatar_preset = $3,
+                   avatar_data = $4
+               WHERE id = $1
+               RETURNING id, username, nickname, avatar_preset, avatar_data, created_at""",
+            user_id,
+            nickname,
+            avatar_preset,
+            avatar_data,
         )
         return dict(row) if row else None
 

@@ -4,15 +4,17 @@ AI Hot Research - FastAPI 主入口
 """
 
 import asyncio
+import copy
 import json
 import os
+import re
 from datetime import datetime, timedelta
 from contextlib import asynccontextmanager
 from typing import Optional
 
 from fastapi import FastAPI, Query, HTTPException, Header
 from fastapi.staticfiles import StaticFiles
-from fastapi.responses import FileResponse, JSONResponse
+from fastapi.responses import FileResponse, JSONResponse, StreamingResponse
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from dotenv import load_dotenv
@@ -27,11 +29,18 @@ from .database import (
     save_like, delete_like, get_likes,
     save_keyword, delete_keyword, get_keywords,
     save_personal_articles, get_personal_articles,
-    create_user, get_user_by_name, count_users, migrate_preferences_to_user,
+    create_user, get_user_by_name, get_user_by_id, update_user_profile,
+    count_users, migrate_preferences_to_user,
     create_chat_session, update_session_title, save_chat_message,
     get_chat_sessions, get_session_messages, delete_chat_session,
 )
-from .ai_service import analyze_hotspots, analyze_single_topic, chat_about_trends, generate_personal_report
+from .ai_service import (
+    analyze_hotspots,
+    analyze_single_topic,
+    chat_about_trends,
+    generate_personal_report,
+    stream_chat_about_trends,
+)
 from .sources.personal_feed import fetch_by_keywords as rss_fetch_by_keywords
 from .sources.weibo import WeiboSource
 from .sources.zhihu import ZhihuSource
@@ -59,6 +68,8 @@ SOURCES = {
 # 内存缓存
 _cache: dict = {
     "topics": {},  # platform -> list[dict]
+    "aggregated_topics": [],
+    "previous_topics": {},
     "last_fetch": None,  # datetime
     "ai_analysis": None,
 }
@@ -74,11 +85,163 @@ JWT_ALGORITHM = "HS256"
 JWT_EXPIRE_HOURS = 24
 
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
+ALLOWED_AVATAR_PRESETS = {
+    "orbit-cyan",
+    "sunset-amber",
+    "violet-comet",
+    "mint-grid",
+    "rose-pulse",
+    "slate-core",
+}
+
+
+def _normalize_topic_title(title: str) -> str:
+    title = (title or "").strip().lower()
+    title = re.sub(r"[#＃@＠]", "", title)
+    title = re.sub(r"[^\w\u4e00-\u9fff]+", "", title)
+    return title
+
+
+def _velocity_from_topics(current_topic: dict, previous_topic: Optional[dict]) -> dict:
+    if not previous_topic:
+        return {"direction": "new", "delta": 0, "label": "NEW"}
+
+    current_rank = int(current_topic.get("rank") or 999)
+    previous_rank = int(previous_topic.get("rank") or 999)
+    delta = previous_rank - current_rank
+
+    if delta >= 2:
+        return {"direction": "up", "delta": delta, "label": f"↑{delta}"}
+    if delta <= -2:
+        return {"direction": "down", "delta": abs(delta), "label": f"↓{abs(delta)}"}
+    return {"direction": "flat", "delta": delta, "label": "→"}
+
+
+def _aggregate_velocity(topics: list[dict]) -> dict:
+    velocities = [t.get("velocity") or {} for t in topics]
+    for direction in ("new", "up", "down", "flat"):
+        matched = [v for v in velocities if v.get("direction") == direction]
+        if matched:
+            return max(matched, key=lambda item: abs(int(item.get("delta") or 0)))
+    return {"direction": "flat", "delta": 0, "label": "→"}
+
+
+def _decorate_topics(
+    current_topics: dict[str, list[dict]],
+    previous_topics: Optional[dict[str, list[dict]]] = None,
+) -> tuple[dict[str, list[dict]], list[dict]]:
+    previous_topics = previous_topics or {}
+    previous_lookup: dict[str, dict[str, dict]] = {}
+
+    for platform, topics in previous_topics.items():
+        platform_map = {}
+        for topic in topics or []:
+            key = _normalize_topic_title(topic.get("title", ""))
+            if not key:
+                continue
+            if key not in platform_map or int(topic.get("rank") or 999) < int(platform_map[key].get("rank") or 999):
+                platform_map[key] = topic
+        previous_lookup[platform] = platform_map
+
+    decorated: dict[str, list[dict]] = {}
+    grouped: dict[str, list[dict]] = {}
+    for platform, topics in current_topics.items():
+        decorated_topics = []
+        for topic in topics or []:
+            key = _normalize_topic_title(topic.get("title", ""))
+            previous_topic = previous_lookup.get(platform, {}).get(key)
+            item = {
+                **topic,
+                "platform": platform,
+                "topic_key": key,
+                "velocity": _velocity_from_topics(topic, previous_topic),
+            }
+            decorated_topics.append(item)
+            if key:
+                grouped.setdefault(key, []).append(item)
+        decorated[platform] = decorated_topics
+
+    aggregated_topics = []
+    for items in grouped.values():
+        representative = min(items, key=lambda item: (int(item.get("rank") or 999), item.get("title") or ""))
+        platform_details = [
+            {
+                "platform": item["platform"],
+                "rank": item.get("rank"),
+                "hot_value": item.get("hot_value", ""),
+            }
+            for item in sorted(items, key=lambda item: int(item.get("rank") or 999))
+        ]
+        aggregate_score = sum(max(0, 120 - int(item.get("rank") or 120)) for item in items) + (len(items) - 1) * 18
+        aggregated_topics.append({
+            "title": representative.get("title", ""),
+            "url": representative.get("url", ""),
+            "hot_value": representative.get("hot_value", ""),
+            "category": representative.get("category", ""),
+            "platforms": [detail["platform"] for detail in platform_details],
+            "platform_count": len(platform_details),
+            "platform_details": platform_details,
+            "aliases": [item.get("title", "") for item in items if item.get("title") and item.get("title") != representative.get("title", "")],
+            "velocity": _aggregate_velocity(items),
+            "aggregate_score": aggregate_score,
+        })
+
+    aggregated_topics.sort(
+        key=lambda item: (
+            -int(item.get("platform_count") or 0),
+            -int(item.get("aggregate_score") or 0),
+            item.get("title") or "",
+        ),
+    )
+    for index, item in enumerate(aggregated_topics, start=1):
+        item["rank"] = index
+
+    return decorated, aggregated_topics
+
+
+def _refresh_topic_views(previous_topics: Optional[dict[str, list[dict]]] = None):
+    decorated, aggregated = _decorate_topics(_cache["topics"], previous_topics)
+    _cache["topics"] = decorated
+    _cache["aggregated_topics"] = aggregated
+
+
+def _collect_analysis_topics() -> list[dict]:
+    if _cache["aggregated_topics"]:
+        return [
+            {
+                "title": topic.get("title", ""),
+                "platform": "/".join(topic.get("platforms", [])),
+                "hot_value": topic.get("hot_value", ""),
+                "rank": topic.get("rank", 0),
+            }
+            for topic in _cache["aggregated_topics"]
+        ]
+
+    all_topics = []
+    for platform, topics in _cache["topics"].items():
+        for topic in topics:
+            all_topics.append({**topic, "platform": platform})
+    return all_topics
+
+
+def _sse(event: str, data) -> str:
+    payload = data if isinstance(data, str) else json.dumps(data, ensure_ascii=False)
+    return f"event: {event}\ndata: {payload}\n\n"
 
 
 def _create_token(user_id: int, username: str) -> str:
     expire = datetime.utcnow() + timedelta(hours=JWT_EXPIRE_HOURS)
     return jwt.encode({"sub": str(user_id), "username": username, "exp": expire}, JWT_SECRET, algorithm=JWT_ALGORITHM)
+
+
+def _serialize_user_profile(user: dict) -> dict:
+    return {
+        "id": user["id"],
+        "username": user["username"],
+        "nickname": user.get("nickname"),
+        "avatar_preset": user.get("avatar_preset"),
+        "avatar_data": user.get("avatar_data"),
+    }
 
 
 def get_current_user(authorization: Optional[str] = Header(None)) -> Optional[dict]:
@@ -105,6 +268,7 @@ async def _preload_cache():
     for name, topics in results:
         if topics:
             _cache["topics"][name] = topics
+    _refresh_topic_views(_cache["previous_topics"])
     _cache["last_fetch"] = datetime.now()
     total = sum(len(v) for v in _cache["topics"].values())
     print(f"✅ 缓存预热完成: {len(_cache['topics'])} 平台, {total} 条热点")
@@ -172,6 +336,12 @@ class LoginRequest(BaseModel):
     password: str
 
 
+class ProfileUpdateRequest(BaseModel):
+    nickname: Optional[str] = None
+    avatar_preset: Optional[str] = None
+    avatar_data: Optional[str] = None
+
+
 # ======================== API 路由 ========================
 
 @app.get("/")
@@ -207,7 +377,7 @@ async def register(req: RegisterRequest):
         await migrate_preferences_to_user(user["id"])
 
     token = _create_token(user["id"], user["username"])
-    return {"token": token, "username": user["username"]}
+    return {"token": token, **_serialize_user_profile(user)}
 
 
 @app.post("/api/auth/login")
@@ -217,7 +387,7 @@ async def login(req: LoginRequest):
     if not user or not pwd_context.verify(req.password, user["password_hash"]):
         raise HTTPException(status_code=401, detail="用户名或密码错误")
     token = _create_token(user["id"], user["username"])
-    return {"token": token, "username": user["username"]}
+    return {"token": token, **_serialize_user_profile(user)}
 
 
 @app.get("/api/auth/me")
@@ -226,7 +396,67 @@ async def auth_me(authorization: Optional[str] = Header(None)):
     user = get_current_user(authorization)
     if not user:
         raise HTTPException(status_code=401, detail="未登录或 token 无效")
-    return {"id": user["id"], "username": user["username"]}
+    fresh_user = await get_user_by_id(user["id"])
+    if not fresh_user:
+        raise HTTPException(status_code=401, detail="用户不存在")
+    return _serialize_user_profile(fresh_user)
+
+
+@app.patch("/api/auth/profile")
+@app.post("/api/auth/profile")
+async def patch_profile(
+    req: ProfileUpdateRequest,
+    authorization: Optional[str] = Header(None),
+):
+    """更新昵称和预设头像"""
+    token_user = get_current_user(authorization)
+    if not token_user:
+        raise HTTPException(status_code=401, detail="未登录或 token 无效")
+    current = await get_user_by_id(token_user["id"])
+    if not current:
+        raise HTTPException(status_code=404, detail="用户不存在")
+
+    nickname = req.nickname if req.nickname is not None else current.get("nickname")
+    if nickname is not None:
+        nickname = nickname.strip()
+        if nickname == "":
+            nickname = None
+        elif len(nickname) > 20:
+            raise HTTPException(status_code=400, detail="昵称需为1-20个字符")
+
+    avatar_preset = (
+        req.avatar_preset
+        if req.avatar_preset is not None
+        else current.get("avatar_preset")
+    )
+    if avatar_preset == "":
+        avatar_preset = None
+    if avatar_preset is not None and avatar_preset not in ALLOWED_AVATAR_PRESETS:
+        raise HTTPException(status_code=400, detail="头像预设无效")
+
+    avatar_data = (
+        req.avatar_data
+        if req.avatar_data is not None
+        else current.get("avatar_data")
+    )
+    if avatar_data == "":
+        avatar_data = None
+    if avatar_data is not None:
+        if not re.match(r"^data:image/(png|jpeg|jpg|webp);base64,", avatar_data):
+            raise HTTPException(status_code=400, detail="仅支持 PNG、JPEG、WebP 图片")
+        if len(avatar_data) > 1_500_000:
+            raise HTTPException(status_code=400, detail="头像图片过大，请压缩后重试")
+        avatar_preset = None
+
+    updated = await update_user_profile(
+        token_user["id"],
+        nickname,
+        avatar_preset,
+        avatar_data,
+    )
+    if not updated:
+        raise HTTPException(status_code=404, detail="用户不存在")
+    return _serialize_user_profile(updated)
 
 
 @app.get("/api/platforms")
@@ -262,6 +492,7 @@ async def _background_refresh():
     if _bg_refresh_lock.locked():
         return  # 已有刷新在进行
     async with _bg_refresh_lock:
+        previous_topics = copy.deepcopy(_cache["topics"])
         tasks = [
             _fetch_single_source(name, source)
             for name, source in SOURCES.items()
@@ -271,6 +502,8 @@ async def _background_refresh():
             if topics:
                 _cache["topics"][name] = topics
                 await save_topics(name, topics)
+        _cache["previous_topics"] = previous_topics
+        _refresh_topic_views(previous_topics)
         _cache["last_fetch"] = datetime.now()
         print(f"🔄 后台刷新完成")
 
@@ -284,37 +517,41 @@ async def get_topics(
     global _cache
 
     now = datetime.now()
-    cache_valid = (
-        _cache["last_fetch"]
-        and (now - _cache["last_fetch"]).total_seconds() < CACHE_TTL
-        and not refresh
-    )
-
     has_cached_data = bool(_cache["topics"])
+    cache_age = (
+        (now - _cache["last_fetch"]).total_seconds()
+        if _cache["last_fetch"]
+        else None
+    )
+    cache_valid = cache_age is not None and cache_age < CACHE_TTL
+    served_from = "memory_cache"
+    is_stale = False
 
-    if not cache_valid:
-        if has_cached_data and not refresh:
-            # 有旧缓存：立即返回旧数据，后台刷新
-            asyncio.create_task(_background_refresh())
+    if refresh or not has_cached_data:
+        previous_topics = copy.deepcopy(_cache["topics"])
+        if platform and platform in SOURCES:
+            sources_to_fetch = {platform: SOURCES[platform]}
         else:
-            # 无缓存或强制刷新：同步获取
-            if platform and platform in SOURCES:
-                sources_to_fetch = {platform: SOURCES[platform]}
-            else:
-                sources_to_fetch = SOURCES
+            sources_to_fetch = SOURCES
 
-            tasks = [
-                _fetch_single_source(name, source)
-                for name, source in sources_to_fetch.items()
-            ]
-            results = await asyncio.gather(*tasks)
+        tasks = [
+            _fetch_single_source(name, source)
+            for name, source in sources_to_fetch.items()
+        ]
+        results = await asyncio.gather(*tasks)
 
-            for name, topics in results:
-                if topics:
-                    _cache["topics"][name] = topics
-                    await save_topics(name, topics)
+        for name, topics in results:
+            if topics:
+                _cache["topics"][name] = topics
+                await save_topics(name, topics)
 
-            _cache["last_fetch"] = now
+        _cache["previous_topics"] = previous_topics
+        _refresh_topic_views(previous_topics)
+        _cache["last_fetch"] = datetime.now()
+        served_from = "manual_refresh" if refresh else "cold_start"
+    elif not cache_valid:
+        asyncio.create_task(_background_refresh())
+        is_stale = True
 
     # 返回数据
     if platform:
@@ -322,6 +559,8 @@ async def get_topics(
             "platform": platform,
             "topics": _cache["topics"].get(platform, []),
             "updated_at": _cache["last_fetch"].isoformat() if _cache["last_fetch"] else None,
+            "served_from": served_from,
+            "is_stale": is_stale,
         }
 
     return {
@@ -329,20 +568,17 @@ async def get_topics(
             name: _cache["topics"].get(name, [])
             for name in SOURCES
         },
+        "aggregated_topics": _cache["aggregated_topics"],
         "updated_at": _cache["last_fetch"].isoformat() if _cache["last_fetch"] else None,
+        "served_from": served_from,
+        "is_stale": is_stale,
     }
 
 
 @app.post("/api/analyze")
 async def ai_analyze():
     """AI 分析当前全部热点"""
-    # 收集所有缓存中的热点
-    all_topics = []
-    for platform, topics in _cache["topics"].items():
-        for t in topics:
-            t_copy = dict(t)
-            t_copy["platform"] = platform
-            all_topics.append(t_copy)
+    all_topics = _collect_analysis_topics()
 
     if not all_topics:
         raise HTTPException(status_code=400, detail="暂无热点数据，请先刷新数据")
@@ -356,6 +592,29 @@ async def ai_analyze():
     return result
 
 
+@app.post("/api/analyze/stream")
+async def ai_analyze_stream():
+    """SSE 流式返回 AI 分析进度，最终以 result 事件给出结构化结果。"""
+    all_topics = _collect_analysis_topics()
+    if not all_topics:
+        raise HTTPException(status_code=400, detail="暂无热点数据，请先刷新数据")
+
+    async def event_stream():
+        yield _sse("status", {"message": "正在汇总热点数据"})
+        yield _sse("status", {"message": "正在调用 AI 生成分析"})
+        result = await analyze_hotspots(all_topics)
+        await save_analysis(
+            "hotspot_analysis",
+            json.dumps(all_topics[:20], ensure_ascii=False),
+            json.dumps(result, ensure_ascii=False),
+        )
+        _cache["ai_analysis"] = result
+        yield _sse("result", result)
+        yield _sse("done", {"ok": True})
+
+    return StreamingResponse(event_stream(), media_type="text/event-stream")
+
+
 @app.post("/api/analyze/topic")
 async def ai_analyze_topic(req: AnalyzeRequest):
     """AI 深度分析单个话题"""
@@ -365,6 +624,22 @@ async def ai_analyze_topic(req: AnalyzeRequest):
     result = await analyze_single_topic(req.topic)
     await save_analysis("topic_analysis", req.topic, json.dumps(result, ensure_ascii=False))
     return result
+
+
+@app.post("/api/analyze/topic/stream")
+async def ai_analyze_topic_stream(req: AnalyzeRequest):
+    """SSE 流式返回单话题分析进度。"""
+    if not req.topic:
+        raise HTTPException(status_code=400, detail="请提供话题标题")
+
+    async def event_stream():
+        yield _sse("status", {"message": f"正在分析「{req.topic}」"})
+        result = await analyze_single_topic(req.topic)
+        await save_analysis("topic_analysis", req.topic, json.dumps(result, ensure_ascii=False))
+        yield _sse("result", result)
+        yield _sse("done", {"ok": True})
+
+    return StreamingResponse(event_stream(), media_type="text/event-stream")
 
 
 @app.post("/api/chat")
@@ -396,6 +671,41 @@ async def ai_chat(req: ChatRequest, authorization: Optional[str] = Header(None))
         await save_chat_message(session_id, "assistant", answer)
 
     return {"answer": answer, "session_id": session_id}
+
+
+@app.post("/api/chat/stream")
+async def ai_chat_stream(req: ChatRequest, authorization: Optional[str] = Header(None)):
+    """SSE 流式聊天输出。"""
+    user = get_current_user(authorization)
+    if not user:
+        raise HTTPException(status_code=401, detail="请先登录后再使用 AI 功能")
+    if not req.question:
+        raise HTTPException(status_code=400, detail="请输入问题")
+
+    all_topics = _collect_analysis_topics()
+    session_id = req.session_id
+
+    if not session_id:
+        title = req.question[:20] + ("…" if len(req.question) > 20 else "")
+        session_id = await create_chat_session(user["id"], title)
+    await save_chat_message(session_id, "user", req.question)
+
+    async def event_stream():
+        answer_parts = []
+        try:
+            yield _sse("session", {"session_id": session_id})
+            async for chunk in stream_chat_about_trends(req.question, all_topics):
+                answer_parts.append(chunk)
+                yield _sse("delta", {"content": chunk})
+            answer = "".join(answer_parts).strip() or "抱歉，我暂时无法回答这个问题。"
+            await save_chat_message(session_id, "assistant", answer)
+            yield _sse("done", {"session_id": session_id, "answer": answer})
+        except Exception as e:
+            message = f"AI 服务调用失败: {str(e)}"
+            await save_chat_message(session_id, "assistant", message)
+            yield _sse("error", {"detail": message})
+
+    return StreamingResponse(event_stream(), media_type="text/event-stream")
 
 
 # ======================== 聊天历史路由 ========================
