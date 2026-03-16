@@ -25,7 +25,7 @@ export function sendChatMessage(payload: {
     method: "POST",
     headers: authHeaders(true),
     body: JSON.stringify(payload),
-    timeoutMs: 20_000,
+    timeoutMs: 90_000,
   });
 }
 

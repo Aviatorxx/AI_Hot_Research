@@ -69,6 +69,7 @@ _cache: dict = {
 
 CACHE_TTL = 300  # 5 分钟缓存
 SOURCE_TIMEOUT = 8  # 单源超时（秒）
+CHAT_TIMEOUT = 55  # AI 问答超时兜底（秒）
 _bg_refresh_lock = asyncio.Lock()
 
 # ======================== 认证配置 ========================
@@ -93,6 +94,23 @@ def _normalize_topic_title(title: str) -> str:
     value = (title or "").strip().lower()
     value = re.sub(r"[#＃@＠]", "", value)
     return re.sub(r"[^\w\u4e00-\u9fff]+", "", value)
+
+
+def _build_chat_fallback(question: str, all_topics: list[dict]) -> str:
+    top_topics = [topic.get("title", "") for topic in all_topics[:5] if topic.get("title")]
+    if top_topics:
+        joined = "；".join(top_topics)
+        return (
+            "当前网络或上游模型响应较慢，已先切换到快速推荐模式。\n"
+            f"你的问题是：{question}\n"
+            f"你可以先关注这些热点：{joined}\n"
+            "若你需要，我可以继续按行业（如航运、金融、AI）做更细分追踪。"
+        )
+    return (
+        "当前网络或上游模型响应较慢，已先切换到快速推荐模式。\n"
+        f"你的问题是：{question}\n"
+        "暂时未拿到热点列表，请稍后重试。"
+    )
 
 
 def _velocity_from_topics(current_topic: dict, previous_topic: Optional[dict]) -> dict:
@@ -683,7 +701,16 @@ async def ai_chat(req: ChatRequest, authorization: Optional[str] = Header(None))
             t_copy["platform"] = platform
             all_topics.append(t_copy)
 
-    answer = await chat_about_trends(req.question, all_topics)
+    try:
+        answer = await asyncio.wait_for(
+            chat_about_trends(req.question, all_topics),
+            timeout=CHAT_TIMEOUT,
+        )
+    except asyncio.TimeoutError:
+        answer = _build_chat_fallback(req.question, all_topics)
+
+    if isinstance(answer, str) and answer.startswith("AI 服务调用失败:"):
+        answer = _build_chat_fallback(req.question, all_topics)
 
     session_id = req.session_id
 
