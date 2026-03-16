@@ -1,3 +1,23 @@
+:root {
+  --ui-scale: 1;
+}
+
+:root[data-font-scale="md"] {
+  --ui-scale: 1;
+}
+
+:root[data-font-scale="lg"] {
+  --ui-scale: 1.06;
+}
+
+:root[data-font-scale="xl"] {
+  --ui-scale: 1.12;
+}
+
+html {
+  font-size: calc(16px * var(--ui-scale));
+}
+
 :root[data-theme="light"] {
   --bg-void: #f5f7fb;
   --bg-surface: #ffffff;
@@ -51,6 +71,48 @@
   color: var(--text-primary);
   border-color: var(--border-glow);
   box-shadow: var(--glow-cyan);
+}
+
+.user-dropdown-item-static {
+  align-items: stretch;
+  cursor: default;
+  gap: 12px;
+}
+
+.user-dropdown-item-static:hover {
+  transform: none;
+}
+
+.font-scale-switch {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.font-scale-btn {
+  border: 1px solid var(--border-dim);
+  border-radius: 999px;
+  background: var(--bg-surface);
+  color: var(--text-secondary);
+  font-size: 12px;
+  font-weight: 600;
+  line-height: 1;
+  padding: 8px 12px;
+  cursor: pointer;
+  transition: all var(--transition);
+}
+
+.font-scale-btn:hover {
+  border-color: var(--border-glow);
+  color: var(--text-primary);
+}
+
+.font-scale-btn.active {
+  background: rgba(0, 255, 255, 0.12);
+  border-color: rgba(0, 255, 255, 0.28);
+  color: var(--neon-cyan);
+  box-shadow: inset 0 0 0 1px rgba(0, 255, 255, 0.08);
 }
 
 .theme-toggle svg {

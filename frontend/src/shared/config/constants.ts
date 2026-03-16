@@ -22,6 +22,7 @@ export const STORAGE_KEYS = {
   authToken: "authToken",
   notifyEnabled: "notifyEnabled",
   themePreference: "themePreference",
+  fontScale: "fontScale",
   topicsSnapshot: "topicsSnapshot",
   visiblePlatforms: "visiblePlatforms",
 } as const;

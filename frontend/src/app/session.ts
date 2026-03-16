@@ -1,6 +1,7 @@
 import type { AuthUser } from "@/features/auth/auth.types";
 import { preferencesStore } from "@/features/preferences/preferences.store";
 import { escapeAttr, escapeHtml } from "@/shared/lib/format";
+import { getFontScale } from "@/app/typography";
 
 interface AvatarPreset {
   id: string;
@@ -188,6 +189,7 @@ export function renderAuthUI(options: {
   escapeHtml: (value: string) => string;
 }): void {
   const { currentUser, escapeHtml } = options;
+  const fontScale = getFontScale();
   const area = document.getElementById("authArea");
   const sessionBar = document.getElementById("chatSessionBar");
   const sessionTitle = document.getElementById("sessionTitle");
@@ -224,6 +226,17 @@ export function renderAuthUI(options: {
                   <span>定位到关键词订阅与收藏区，便于继续管理</span>
                 </div>
               </button>
+              <div class="user-dropdown-item user-dropdown-item-static" role="group" aria-label="阅读字号">
+                <div>
+                  <strong>阅读字号</strong>
+                  <span>调大页面文字与界面比例，缓解长时间阅读压力</span>
+                </div>
+                <div class="font-scale-switch">
+                  <button class="font-scale-btn ${fontScale === "md" ? "active" : ""}" data-action="setFontScale" data-scale="md" aria-pressed="${fontScale === "md" ? "true" : "false"}">标准</button>
+                  <button class="font-scale-btn ${fontScale === "lg" ? "active" : ""}" data-action="setFontScale" data-scale="lg" aria-pressed="${fontScale === "lg" ? "true" : "false"}">偏大</button>
+                  <button class="font-scale-btn ${fontScale === "xl" ? "active" : ""}" data-action="setFontScale" data-scale="xl" aria-pressed="${fontScale === "xl" ? "true" : "false"}">大号</button>
+                </div>
+              </div>
               <button class="user-dropdown-item" data-action="openProfileEditor" role="menuitem">
                 <div>
                   <strong>编辑资料</strong>

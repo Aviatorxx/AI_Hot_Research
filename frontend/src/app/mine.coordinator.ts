@@ -11,7 +11,7 @@ import { loadExternalFeed } from "@/features/feed/feed.service";
 import { feedStore } from "@/features/feed/feed.store";
 import { loadChatSessionsState } from "@/features/chat/chat.service";
 import { PLATFORM_NAMES } from "@/shared/config/constants";
-import { escapeHtml, escapeAttr, formatChatText } from "@/shared/lib/format";
+import { escapeHtml, escapeAttr } from "@/shared/lib/format";
 import { pushToast } from "@/shared/components/toast/toast";
 import { openModalDialog } from "@/shared/components/modal/modal";
 import { appBus } from "@/app/app-event-bus";
@@ -215,7 +215,6 @@ export function renderRecommendationsPanel(): void {
   const { likes, keywords } = preferencesStore.getState();
   renderMineRecommendations({
     aiContainer,
-    chatMessages: document.getElementById("chatMessages"),
     data,
     prefixHtml: hotFeed.getAnalysisJobTrayHtml(),
     hasTerms: keywords.length > 0 || Object.keys(likes).length > 0,
@@ -227,7 +226,6 @@ export function renderRecommendationsPanel(): void {
     platformNames: PLATFORM_NAMES,
     escapeHtml,
     escapeAttr,
-    formatChatText,
   });
 }
 
@@ -349,7 +347,6 @@ export async function fetchRecommendations(): Promise<void> {
     const { likes, keywords } = preferencesStore.getState();
     renderMineRecommendations({
       aiContainer,
-      chatMessages: document.getElementById("chatMessages"),
       data: null,
       prefixHtml: hotFeed.getAnalysisJobTrayHtml(),
       hasTerms: keywords.length > 0 || Object.keys(likes).length > 0,
@@ -361,7 +358,6 @@ export async function fetchRecommendations(): Promise<void> {
       platformNames: PLATFORM_NAMES,
       escapeHtml,
       escapeAttr,
-      formatChatText,
     });
     pushToast({ message: `推荐失败: ${error.message}`, type: "error" });
   }

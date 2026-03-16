@@ -1,7 +1,6 @@
 import {
   renderChatHistoryMarkup,
   renderMinePageMarkup,
-  renderRecommendationChatMarkup,
   renderRecommendationsPanelMarkup,
 } from "@/pages/mine/mine.view";
 import type { FeedArticle } from "@/features/feed/feed.types";
@@ -10,9 +9,6 @@ import type { RecommendationResult } from "@/features/recommendations/recommenda
 
 type MineRenderOptions = Parameters<typeof renderMinePageMarkup>[0];
 type ChatHistoryRenderOptions = Parameters<typeof renderChatHistoryMarkup>[0];
-type RecommendationChatRenderOptions = Parameters<
-  typeof renderRecommendationChatMarkup
->[0];
 
 export function renderMinePage(options: {
   container: HTMLElement;
@@ -75,7 +71,6 @@ export function renderMineChatHistory(options: {
 
 export function renderMineRecommendations(options: {
   aiContainer: HTMLElement;
-  chatMessages: HTMLElement | null;
   data: RecommendationResult | null;
   prefixHtml?: string;
   hasTerms: boolean;
@@ -83,11 +78,9 @@ export function renderMineRecommendations(options: {
   platformNames: Parameters<typeof renderRecommendationsPanelMarkup>[0]["platformNames"];
   escapeHtml: Parameters<typeof renderRecommendationsPanelMarkup>[0]["escapeHtml"];
   escapeAttr: Parameters<typeof renderRecommendationsPanelMarkup>[0]["escapeAttr"];
-  formatChatText: RecommendationChatRenderOptions["formatChatText"];
 }): void {
   const {
     aiContainer,
-    chatMessages,
     data,
     prefixHtml,
     hasTerms,
@@ -95,7 +88,6 @@ export function renderMineRecommendations(options: {
     platformNames,
     escapeHtml,
     escapeAttr,
-    formatChatText,
   } = options;
 
   aiContainer.innerHTML = renderRecommendationsPanelMarkup({
@@ -107,17 +99,6 @@ export function renderMineRecommendations(options: {
     escapeHtml,
     escapeAttr,
   });
-
-  if (chatMessages && data) {
-    chatMessages.innerHTML = renderRecommendationChatMarkup({
-      report: data.report,
-      articles: data.fetched_articles,
-      formatChatText,
-      escapeAttr,
-      escapeHtml,
-    });
-    chatMessages.scrollTop = chatMessages.scrollHeight;
-  }
 }
 
 export function renderMineRecommendationsLoading(

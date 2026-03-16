@@ -12,6 +12,7 @@ import * as hotFeed from "@/app/hot-feed.coordinator";
 import * as mine from "@/app/mine.coordinator";
 import * as chat from "@/app/chat.coordinator";
 import * as theme from "@/app/theme";
+import * as typography from "@/app/typography";
 import { hydrateTopicsSnapshot } from "@/features/topics/topics.service";
 
 let initialized = false;
@@ -135,6 +136,13 @@ function wireDataActionDelegation(): void {
       toggleTheme: () => {
         theme.toggleTheme();
       },
+      setFontScale: (el) => {
+        const scale = el.dataset.scale;
+        if (scale === "md" || scale === "lg" || scale === "xl") {
+          typography.setFontScale(scale);
+          auth.updateAuthUI();
+        }
+      },
 
       // Mine actions
       addKeyword: () => mine.addKeyword(),
@@ -243,6 +251,7 @@ export async function initializeApp(): Promise<void> {
   initialized = true;
 
   theme.applyStoredTheme();
+  typography.applyStoredFontScale();
   hotFeed.subscribeAnalysisStore();
   mine.subscribeFeedStore();
   wireEventBus();
