@@ -230,6 +230,12 @@ export interface AnalysisJobCard {
   createdAt: number;
 }
 
+interface AnalysisStateSummary {
+  modeLabel: string;
+  modeHint: string;
+  topicCount: number;
+}
+
 function getAnalysisJobStatusLabel(status: AnalysisJobCard["status"]): string {
   if (status === "running") return "分析中";
   if (status === "done") return "已完成";
@@ -258,7 +264,7 @@ export function renderAnalysisJobTrayMarkup(options: {
       <div class="analysis-job-title">分析任务</div>
       <div class="analysis-job-count">${jobs.length} active</div>
     </div>
-    <div class="analysis-job-list">
+    <div class="analysis-job-list${jobs.length > 3 ? " has-overflow" : ""}">
       ${jobs
         .map((job) => {
           const actionHtml =
@@ -292,10 +298,18 @@ export function renderAnalysisPanelMarkup(options: {
   } | null;
   jobs?: AnalysisJobCard[];
   selectedJobId?: string | null;
+  stateSummary?: AnalysisStateSummary;
   escapeHtml: (value: string) => string;
   escapeAttr: (value: string) => string;
 }): string {
-  const { data, jobs = [], selectedJobId = null, escapeHtml, escapeAttr } = options;
+  const {
+    data,
+    jobs = [],
+    selectedJobId = null,
+    stateSummary,
+    escapeHtml,
+    escapeAttr,
+  } = options;
   const jobTrayHtml = renderAnalysisJobTrayMarkup({
     jobs,
     selectedJobId,
@@ -303,33 +317,148 @@ export function renderAnalysisPanelMarkup(options: {
     escapeAttr,
   });
 
+  const renderStateSection = (state: "idle" | "ready" | "error") => {
+    const stateNote =
+      state === "ready"
+        ? "摘要已经生成，建议先看概览，再顺着热点分组和推荐关注继续往下追。"
+        : state === "error"
+          ? "本次摘要没有成功返回，但你仍然可以浏览热点、切换观察模式或查看后台任务。"
+          : jobs.length > 0
+            ? "当前已有后台分析任务在运行，结果完成后会自动回到这里。"
+            : "这里是热点工作台的 AI 助手侧栏，先生成摘要，再决定看共振还是上升最快。";
+
+    return `<div class="insight-section insight-section--state">
+      <div class="insight-section-header">
+        <div class="insight-section-title">当前状态</div>
+        <div class="insight-section-meta">工作台概览</div>
+      </div>
+      <div class="ai-state-grid">
+        ${
+          stateSummary
+            ? `<div class="ai-state-chip">
+                <span class="ai-state-chip-label">观察模式</span>
+                <span class="ai-state-chip-value">${escapeHtml(stateSummary.modeLabel)}</span>
+              </div>
+              <div class="ai-state-chip">
+                <span class="ai-state-chip-label">当前热点</span>
+                <span class="ai-state-chip-value">${stateSummary.topicCount}</span>
+              </div>`
+            : ""
+        }
+        <div class="ai-state-chip">
+          <span class="ai-state-chip-label">后台任务</span>
+          <span class="ai-state-chip-value">${jobs.length}</span>
+        </div>
+        <div class="ai-state-chip">
+          <span class="ai-state-chip-label">摘要状态</span>
+          <span class="ai-state-chip-value">${
+            state === "ready" ? "已就绪" : state === "error" ? "异常" : "待生成"
+          }</span>
+        </div>
+      </div>
+      <div class="ai-state-note">${
+        stateSummary
+          ? `${escapeHtml(stateSummary.modeHint)} ${escapeHtml(stateNote)}`
+          : escapeHtml(stateNote)
+      }</div>
+    </div>`;
+  };
+
+  const quickActionsHtml = `<div class="ai-quick-actions">
+      <button class="ai-quick-btn primary" data-action="aiAnalyze">今日摘要</button>
+      <button class="ai-quick-btn secondary" data-action="setFeedMode" data-mode="resonance">看共振话题</button>
+      <button class="ai-quick-btn tertiary" data-action="setFeedMode" data-mode="rising">看上升最快</button>
+    </div>`;
+
   if (!data) {
-    return `${jobTrayHtml}<div class="ai-placeholder">
+    return `<div class="ai-assistant-shell">
+      <div class="ai-assistant-head">
+        <div>
+          <div class="ai-assistant-kicker">热点洞察</div>
+          <div class="ai-assistant-title">用一屏内容承接今日摘要、聚类洞察和后台分析任务。</div>
+        </div>
+        <div class="ai-assistant-badge">${jobs.length > 0 ? `${jobs.length} 个任务` : "等待分析"}</div>
+      </div>
+      ${renderStateSection("idle")}
+      <div class="insight-section">
+        <div class="insight-section-header">
+          <div class="insight-section-title">今日概览</div>
+          <div class="insight-section-meta">热点摘要</div>
+        </div>
+        <div class="ai-placeholder">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" width="40" height="40">
         <path d="M12 2a4 4 0 0 0-4 4c0 2 1 3 2 4l-5 7h14l-5-7c1-1 2-2 2-4a4 4 0 0 0-4-4z" />
         <path d="M12 18v4" />
       </svg>
       <p>点击顶部「AI 分析」按钮，生成今日热点摘要；单话题后台分析结果也会回到这里。</p>
-      <div class="ai-quick-actions">
-        <button class="ai-quick-btn" data-action="aiAnalyze">今日摘要</button>
-        <button class="ai-quick-btn" data-action="setFeedMode" data-mode="resonance">看共振话题</button>
-        <button class="ai-quick-btn" data-action="setFeedMode" data-mode="rising">看上升最快</button>
       </div>
+      </div>
+      <div class="insight-section">
+        <div class="insight-section-header">
+          <div class="insight-section-title">快捷动作</div>
+          <div class="insight-section-meta">从摘要直接进入热点模式</div>
+        </div>
+        ${quickActionsHtml}
+      </div>
+      ${jobTrayHtml}
     </div>`;
   }
 
   if (data.error) {
-    return `${jobTrayHtml}<div class="ai-placeholder"><p style="color:var(--neon-red)">${escapeHtml(data.error)}</p></div>`;
+    return `<div class="ai-assistant-shell">
+      <div class="ai-assistant-head">
+        <div>
+          <div class="ai-assistant-kicker">热点洞察</div>
+          <div class="ai-assistant-title">AI 分析已返回错误，可以继续查看任务或重新切换模式。</div>
+        </div>
+        <div class="ai-assistant-badge">异常</div>
+      </div>
+      ${renderStateSection("error")}
+      <div class="insight-section">
+        <div class="insight-section-header">
+          <div class="insight-section-title">错误信息</div>
+          <div class="insight-section-meta">本次分析未完成</div>
+        </div>
+        <div class="ai-placeholder"><p style="color:var(--neon-red)">${escapeHtml(data.error)}</p></div>
+      </div>
+      <div class="insight-section">
+        <div class="insight-section-header">
+          <div class="insight-section-title">快捷动作</div>
+          <div class="insight-section-meta">换一个角度继续看</div>
+        </div>
+        ${quickActionsHtml}
+      </div>
+      ${jobTrayHtml}
+    </div>`;
   }
 
-  let html = "";
+  let html = `<div class="ai-assistant-shell">
+    <div class="ai-assistant-head">
+      <div>
+        <div class="ai-assistant-kicker">热点洞察</div>
+        <div class="ai-assistant-title">把今日摘要、聚类洞察和推荐动作稳定放在同一侧栏里。</div>
+      </div>
+      <div class="ai-assistant-badge">${data.clusters?.length || 0} 组热点</div>
+    </div>
+    ${renderStateSection("ready")}`;
 
   if (data.overview) {
-    html += `<div class="ai-overview">${escapeHtml(data.overview)}</div>`;
+    html += `<div class="insight-section">
+      <div class="insight-section-header">
+        <div class="insight-section-title">今日概览</div>
+        <div class="insight-section-meta">一句话看盘面</div>
+      </div>
+      <div class="ai-overview">${escapeHtml(data.overview)}</div>
+    </div>`;
   }
 
   if (data.clusters?.length) {
-    html += '<div class="ai-panel-content">';
+    html += `<div class="insight-section">
+      <div class="insight-section-header">
+        <div class="insight-section-title">热点分组</div>
+        <div class="insight-section-meta">点击可继续聚焦</div>
+      </div>
+      <div class="ai-panel-content">`;
     for (const cluster of data.clusters) {
       const trendMap: Record<string, string> = {
         rising: "上升",
@@ -355,22 +484,31 @@ export function renderAnalysisPanelMarkup(options: {
         </div>
       </div>`;
     }
-    html += "</div>";
+    html += "</div></div>";
   }
 
   if (data.recommendation) {
-    html += `<div class="ai-overview" style="margin-top:12px;border-color:rgba(255,0,255,0.15);background:linear-gradient(135deg,rgba(255,0,255,0.05),rgba(0,255,255,0.03))">
+    html += `<div class="insight-section">
+      <div class="insight-section-header">
+        <div class="insight-section-title">推荐关注</div>
+        <div class="insight-section-meta">适合继续跟的方向</div>
+      </div>
+      <div class="ai-overview" style="border-color:rgba(255,0,255,0.15);background:linear-gradient(135deg,rgba(255,0,255,0.05),rgba(0,255,255,0.03))">
       <strong style="color:var(--neon-magenta)">推荐关注：</strong> ${escapeHtml(data.recommendation)}
+      </div>
     </div>`;
   }
 
-  html += `<div class="ai-quick-actions">
-      <button class="ai-quick-btn" data-action="aiAnalyze">今日摘要</button>
-      <button class="ai-quick-btn" data-action="setFeedMode" data-mode="resonance">看共振话题</button>
-      <button class="ai-quick-btn" data-action="setFeedMode" data-mode="rising">看上升最快</button>
-    </div>`;
+  html += `<div class="insight-section">
+      <div class="insight-section-header">
+        <div class="insight-section-title">快捷动作</div>
+        <div class="insight-section-meta">一键切到不同观察视角</div>
+      </div>
+      ${quickActionsHtml}
+    </div>
+    ${jobTrayHtml}</div>`;
 
-  return `${jobTrayHtml}${html}`;
+  return html;
 }
 
 export function renderTopicAnalysisMarkup(options: {

@@ -78,13 +78,17 @@ export function renderPlatformTabsMarkup(options: {
     : Object.keys(platformNames);
   const allCount = aggregatedTopics.length || Object.values(allTopics).reduce((sum, topics) => sum + (topics?.length || 0), 0);
 
-  let html = `<button class="platform-tab ${currentPlatform === "all" ? "active" : ""}" data-platform="all" role="tab" data-action="switchPlatform" data-platform="all">
-    全部平台 <span class="tab-count">${allCount}</span>
-  </button>`;
+  let html = `<div class="platform-tab-group platform-tab-group--primary" role="presentation">
+    <button class="platform-tab ${currentPlatform === "all" ? "active" : ""}" data-platform="all" role="tab" data-action="switchPlatform" data-platform="all">
+      全部平台 <span class="tab-count">${allCount}</span>
+    </button>
+    <button class="platform-tab mine-tab ${currentPlatform === "mine" ? "active" : ""}" data-platform="mine" role="tab" data-action="switchPlatform" data-platform="mine">
+      ⭐ 我的
+    </button>
+  </div>`;
 
-  html += `<button class="platform-tab mine-tab ${currentPlatform === "mine" ? "active" : ""}" data-platform="mine" role="tab" data-action="switchPlatform" data-platform="mine">
-    ⭐ 我的
-  </button>`;
+  html += '<span class="platform-tab-divider" aria-hidden="true"></span>';
+  html += '<div class="platform-tab-group platform-tab-group--sources" role="presentation">';
 
   for (const id of visibleIds) {
     const name = platformNames[id];
@@ -95,5 +99,6 @@ export function renderPlatformTabsMarkup(options: {
     </button>`;
   }
 
+  html += "</div>";
   return html;
 }

@@ -79,6 +79,7 @@ export function renderMineRecommendations(options: {
   data: RecommendationResult | null;
   prefixHtml?: string;
   hasTerms: boolean;
+  statusSummary: Parameters<typeof renderRecommendationsPanelMarkup>[0]["statusSummary"];
   platformNames: Parameters<typeof renderRecommendationsPanelMarkup>[0]["platformNames"];
   escapeHtml: Parameters<typeof renderRecommendationsPanelMarkup>[0]["escapeHtml"];
   escapeAttr: Parameters<typeof renderRecommendationsPanelMarkup>[0]["escapeAttr"];
@@ -90,6 +91,7 @@ export function renderMineRecommendations(options: {
     data,
     prefixHtml,
     hasTerms,
+    statusSummary,
     platformNames,
     escapeHtml,
     escapeAttr,
@@ -100,6 +102,7 @@ export function renderMineRecommendations(options: {
     data,
     prefixHtml,
     hasTerms,
+    statusSummary,
     platformNames,
     escapeHtml,
     escapeAttr,

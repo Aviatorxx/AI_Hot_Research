@@ -89,14 +89,24 @@ export function renderHotFeedAnalysisPanel(options: {
   data: AnalysisPanelRenderOptions["data"];
   jobs?: AnalysisPanelRenderOptions["jobs"];
   selectedJobId?: AnalysisPanelRenderOptions["selectedJobId"];
+  stateSummary?: AnalysisPanelRenderOptions["stateSummary"];
   escapeHtml: AnalysisPanelRenderOptions["escapeHtml"];
   escapeAttr: AnalysisPanelRenderOptions["escapeAttr"];
 }): void {
-  const { container, data, jobs, selectedJobId, escapeHtml, escapeAttr } = options;
+  const {
+    container,
+    data,
+    jobs,
+    selectedJobId,
+    stateSummary,
+    escapeHtml,
+    escapeAttr,
+  } = options;
   container.innerHTML = renderAnalysisPanelMarkup({
     data,
     jobs,
     selectedJobId,
+    stateSummary,
     escapeHtml,
     escapeAttr,
   });

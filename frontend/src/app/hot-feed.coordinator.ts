@@ -426,11 +426,23 @@ export function renderTopics(): void {
 export function renderAnalysisPanel(data: any | null): void {
   const container = document.getElementById("aiPanelContainer");
   if (!container) return;
+  const modeMeta =
+    currentPlatform === "all"
+      ? getFeedModeMeta(feedMode)
+      : {
+          label: PLATFORM_NAMES[currentPlatform] || "当前平台",
+          meta: "聚焦单个平台热榜，适合快速判断该来源的实时热度变化。",
+        };
   renderHotFeedAnalysisPanel({
     container,
     data,
     jobs: topicAnalysisJobs.slice(0, 5),
     selectedJobId: selectedAnalysisJobId,
+    stateSummary: {
+      modeLabel: modeMeta.label,
+      modeHint: modeMeta.meta,
+      topicCount: getVisibleTopics().length,
+    },
     escapeHtml,
     escapeAttr,
   });

@@ -36,6 +36,7 @@ const STOP_WORDS = new Set([
 ]);
 
 let activeDiscoverTab: "hot" | "ext" = "hot";
+let lastRelatedCount = 0;
 
 function cleanKeywordCandidate(input: string): string {
   return String(input || "")
@@ -178,6 +179,7 @@ export function renderMyPage(allTopics: Record<string, any[]>): void {
   const { likes, keywords } = preferencesStore.getState();
   const { currentUser } = authStore.getState();
   const related = getRelatedTopics(allTopics);
+  lastRelatedCount = related.length;
   const discoverTab =
     activeDiscoverTab === "ext" && keywords.length > 0 ? "ext" : "hot";
   activeDiscoverTab = discoverTab;
@@ -217,6 +219,11 @@ export function renderRecommendationsPanel(): void {
     data,
     prefixHtml: hotFeed.getAnalysisJobTrayHtml(),
     hasTerms: keywords.length > 0 || Object.keys(likes).length > 0,
+    statusSummary: {
+      likesCount: Object.keys(likes).length,
+      keywordsCount: keywords.length,
+      relatedCount: lastRelatedCount,
+    },
     platformNames: PLATFORM_NAMES,
     escapeHtml,
     escapeAttr,
@@ -346,6 +353,11 @@ export async function fetchRecommendations(): Promise<void> {
       data: null,
       prefixHtml: hotFeed.getAnalysisJobTrayHtml(),
       hasTerms: keywords.length > 0 || Object.keys(likes).length > 0,
+      statusSummary: {
+        likesCount: Object.keys(likes).length,
+        keywordsCount: keywords.length,
+        relatedCount: lastRelatedCount,
+      },
       platformNames: PLATFORM_NAMES,
       escapeHtml,
       escapeAttr,
