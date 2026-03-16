@@ -357,6 +357,9 @@ export function renderRecommendationsPanelMarkup(options: {
       </div>
       <div class="ai-state-note">${escapeHtml(statusNote)}</div>
     </div>`;
+  const headActionHtml = hasTerms
+    ? `<button class="ai-head-action" data-action="fetchRecommendations">刷新推荐</button>`
+    : `<button class="ai-head-action" data-action="focusKeywordInput">去添加关注</button>`;
 
   if (!data) {
     return `<div class="ai-assistant-shell">
@@ -365,7 +368,10 @@ export function renderRecommendationsPanelMarkup(options: {
           <div class="ai-assistant-kicker">推荐助手</div>
           <div class="ai-assistant-title">基于你的关注方向，给出下一步可执行动作。</div>
         </div>
-        <div class="ai-assistant-badge">${hasTerms ? "已建立关注" : "待补充关注"}</div>
+        <div class="ai-assistant-head-right">
+          ${headActionHtml}
+          <div class="ai-assistant-badge">${hasTerms ? "已建立关注" : "待补充关注"}</div>
+        </div>
       </div>
       ${stateSectionHtml}
       <div class="insight-section">
@@ -402,7 +408,10 @@ export function renderRecommendationsPanelMarkup(options: {
         <div class="ai-assistant-kicker">推荐助手</div>
         <div class="ai-assistant-title">把你的关注方向转成可执行的热点追踪动作。</div>
       </div>
-      <div class="ai-assistant-badge">${data.recommended_topics?.length || 0} 条推荐</div>
+      <div class="ai-assistant-head-right">
+        ${headActionHtml}
+        <div class="ai-assistant-badge">${data.recommended_topics?.length || 0} 条推荐</div>
+      </div>
     </div>
     ${stateSectionHtml}`;
 
