@@ -4,7 +4,6 @@ AI Hot Research - FastAPI 主入口
 """
 
 import asyncio
-import copy
 import json
 import os
 import re
@@ -14,7 +13,7 @@ from typing import Optional
 
 from fastapi import FastAPI, Query, HTTPException, Header
 from fastapi.staticfiles import StaticFiles
-from fastapi.responses import FileResponse, JSONResponse, StreamingResponse
+from fastapi.responses import FileResponse, JSONResponse
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from dotenv import load_dotenv
@@ -34,13 +33,7 @@ from .database import (
     create_chat_session, update_session_title, save_chat_message,
     get_chat_sessions, get_session_messages, delete_chat_session,
 )
-from .ai_service import (
-    analyze_hotspots,
-    analyze_single_topic,
-    chat_about_trends,
-    generate_personal_report,
-    stream_chat_about_trends,
-)
+from .ai_service import analyze_hotspots, analyze_single_topic, chat_about_trends, generate_personal_report
 from .sources.personal_feed import fetch_by_keywords as rss_fetch_by_keywords
 from .sources.weibo import WeiboSource
 from .sources.zhihu import ZhihuSource
@@ -83,8 +76,7 @@ _bg_refresh_lock = asyncio.Lock()
 JWT_SECRET = os.getenv("JWT_SECRET", "changeme-please-set-in-env")
 JWT_ALGORITHM = "HS256"
 JWT_EXPIRE_HOURS = 24
-
-pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
+MAX_REGISTERED_USERS = int(os.getenv("MAX_REGISTERED_USERS", "2"))
 ALLOWED_AVATAR_PRESETS = {
     "orbit-cyan",
     "sunset-amber",
@@ -94,12 +86,13 @@ ALLOWED_AVATAR_PRESETS = {
     "slate-core",
 }
 
+pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
+
 
 def _normalize_topic_title(title: str) -> str:
-    title = (title or "").strip().lower()
-    title = re.sub(r"[#＃@＠]", "", title)
-    title = re.sub(r"[^\w\u4e00-\u9fff]+", "", title)
-    return title
+    value = (title or "").strip().lower()
+    value = re.sub(r"[#＃@＠]", "", value)
+    return re.sub(r"[^\w\u4e00-\u9fff]+", "", value)
 
 
 def _velocity_from_topics(current_topic: dict, previous_topic: Optional[dict]) -> dict:
@@ -118,9 +111,9 @@ def _velocity_from_topics(current_topic: dict, previous_topic: Optional[dict]) -
 
 
 def _aggregate_velocity(topics: list[dict]) -> dict:
-    velocities = [t.get("velocity") or {} for t in topics]
+    velocities = [topic.get("velocity") or {} for topic in topics]
     for direction in ("new", "up", "down", "flat"):
-        matched = [v for v in velocities if v.get("direction") == direction]
+        matched = [velocity for velocity in velocities if velocity.get("direction") == direction]
         if matched:
             return max(matched, key=lambda item: abs(int(item.get("delta") or 0)))
     return {"direction": "flat", "delta": 0, "label": "→"}
@@ -134,36 +127,40 @@ def _decorate_topics(
     previous_lookup: dict[str, dict[str, dict]] = {}
 
     for platform, topics in previous_topics.items():
-        platform_map = {}
+        platform_map: dict[str, dict] = {}
         for topic in topics or []:
-            key = _normalize_topic_title(topic.get("title", ""))
-            if not key:
+            topic_key = _normalize_topic_title(topic.get("title", ""))
+            if not topic_key:
                 continue
-            if key not in platform_map or int(topic.get("rank") or 999) < int(platform_map[key].get("rank") or 999):
-                platform_map[key] = topic
+            existing = platform_map.get(topic_key)
+            if not existing or int(topic.get("rank") or 999) < int(existing.get("rank") or 999):
+                platform_map[topic_key] = topic
         previous_lookup[platform] = platform_map
 
     decorated: dict[str, list[dict]] = {}
     grouped: dict[str, list[dict]] = {}
     for platform, topics in current_topics.items():
-        decorated_topics = []
+        decorated_topics: list[dict] = []
         for topic in topics or []:
-            key = _normalize_topic_title(topic.get("title", ""))
-            previous_topic = previous_lookup.get(platform, {}).get(key)
+            topic_key = _normalize_topic_title(topic.get("title", ""))
+            previous_topic = previous_lookup.get(platform, {}).get(topic_key)
             item = {
                 **topic,
                 "platform": platform,
-                "topic_key": key,
+                "topic_key": topic_key,
                 "velocity": _velocity_from_topics(topic, previous_topic),
             }
             decorated_topics.append(item)
-            if key:
-                grouped.setdefault(key, []).append(item)
+            if topic_key:
+                grouped.setdefault(topic_key, []).append(item)
         decorated[platform] = decorated_topics
 
-    aggregated_topics = []
+    aggregated_topics: list[dict] = []
     for items in grouped.values():
-        representative = min(items, key=lambda item: (int(item.get("rank") or 999), item.get("title") or ""))
+        representative = min(
+            items,
+            key=lambda item: (int(item.get("rank") or 999), item.get("title") or ""),
+        )
         platform_details = [
             {
                 "platform": item["platform"],
@@ -172,26 +169,36 @@ def _decorate_topics(
             }
             for item in sorted(items, key=lambda item: int(item.get("rank") or 999))
         ]
-        aggregate_score = sum(max(0, 120 - int(item.get("rank") or 120)) for item in items) + (len(items) - 1) * 18
-        aggregated_topics.append({
-            "title": representative.get("title", ""),
-            "url": representative.get("url", ""),
-            "hot_value": representative.get("hot_value", ""),
-            "category": representative.get("category", ""),
-            "platforms": [detail["platform"] for detail in platform_details],
-            "platform_count": len(platform_details),
-            "platform_details": platform_details,
-            "aliases": [item.get("title", "") for item in items if item.get("title") and item.get("title") != representative.get("title", "")],
-            "velocity": _aggregate_velocity(items),
-            "aggregate_score": aggregate_score,
-        })
+        aggregate_score = (
+            sum(max(0, 120 - int(item.get("rank") or 120)) for item in items)
+            + (len(items) - 1) * 18
+        )
+        aggregated_topics.append(
+            {
+                "title": representative.get("title", ""),
+                "url": representative.get("url", ""),
+                "hot_value": representative.get("hot_value", ""),
+                "category": representative.get("category", ""),
+                "platforms": [detail["platform"] for detail in platform_details],
+                "platform_count": len(platform_details),
+                "platform_details": platform_details,
+                "aliases": [
+                    item.get("title", "")
+                    for item in items
+                    if item.get("title")
+                    and item.get("title") != representative.get("title", "")
+                ],
+                "velocity": _aggregate_velocity(items),
+                "aggregate_score": aggregate_score,
+            }
+        )
 
     aggregated_topics.sort(
         key=lambda item: (
             -int(item.get("platform_count") or 0),
             -int(item.get("aggregate_score") or 0),
             item.get("title") or "",
-        ),
+        )
     )
     for index, item in enumerate(aggregated_topics, start=1):
         item["rank"] = index
@@ -199,34 +206,10 @@ def _decorate_topics(
     return decorated, aggregated_topics
 
 
-def _refresh_topic_views(previous_topics: Optional[dict[str, list[dict]]] = None):
+def _refresh_topic_views(previous_topics: Optional[dict[str, list[dict]]] = None) -> None:
     decorated, aggregated = _decorate_topics(_cache["topics"], previous_topics)
     _cache["topics"] = decorated
     _cache["aggregated_topics"] = aggregated
-
-
-def _collect_analysis_topics() -> list[dict]:
-    if _cache["aggregated_topics"]:
-        return [
-            {
-                "title": topic.get("title", ""),
-                "platform": "/".join(topic.get("platforms", [])),
-                "hot_value": topic.get("hot_value", ""),
-                "rank": topic.get("rank", 0),
-            }
-            for topic in _cache["aggregated_topics"]
-        ]
-
-    all_topics = []
-    for platform, topics in _cache["topics"].items():
-        for topic in topics:
-            all_topics.append({**topic, "platform": platform})
-    return all_topics
-
-
-def _sse(event: str, data) -> str:
-    payload = data if isinstance(data, str) else json.dumps(data, ensure_ascii=False)
-    return f"event: {event}\ndata: {payload}\n\n"
 
 
 def _create_token(user_id: int, username: str) -> str:
@@ -241,6 +224,51 @@ def _serialize_user_profile(user: dict) -> dict:
         "nickname": user.get("nickname"),
         "avatar_preset": user.get("avatar_preset"),
         "avatar_data": user.get("avatar_data"),
+    }
+
+
+def _build_recommendation_fallback(
+    likes: list[dict],
+    keywords: list[dict],
+    all_topics: list[dict],
+) -> dict:
+    keyword_values = [str(item.get("value", "")).strip() for item in keywords if item.get("value")]
+    like_titles = [str(item.get("value", "")).strip() for item in likes if item.get("value")]
+    terms = {value.lower() for value in keyword_values if value}
+    for title in like_titles:
+        for part in re.findall(r"[\u4e00-\u9fff]{2,}|[A-Za-z]{3,}", title):
+            terms.add(part.lower())
+
+    scored_topics = []
+    seen: set[str] = set()
+    for topic in all_topics:
+        title = str(topic.get("title", "")).strip()
+        if not title or title in seen:
+            continue
+        seen.add(title)
+        lower = title.lower()
+        match_count = sum(1 for term in terms if term and term in lower)
+        score = match_count * 10 + max(0, 100 - int(topic.get("rank") or 100))
+        if not terms or match_count > 0:
+            scored_topics.append((score, topic))
+
+    scored_topics.sort(key=lambda item: item[0], reverse=True)
+    selected = [topic for _, topic in scored_topics[:8]] or all_topics[:8]
+    interest_tags = keyword_values[:4] or like_titles[:4] or ["全平台热点", "趋势追踪"]
+
+    return {
+        "interest_tags": interest_tags,
+        "query_summary": "基于你的关键词订阅、收藏话题与当前热榜，为你筛出优先关注的热点方向。",
+        "recommended_topics": [
+            {
+                "title": topic.get("title", ""),
+                "url": topic.get("url", ""),
+                "platform": topic.get("platform", ""),
+                "reason": "命中关注方向" if terms else "当前热度较高",
+            }
+            for topic in selected
+        ],
+        "report": "当前环境下已回退到快速推荐模式，优先依据你的关键词、收藏记录和热榜排名给出可立即跟进的话题。",
     }
 
 
@@ -260,6 +288,14 @@ async def _preload_cache():
     """启动时预热缓存，用户进入页面时秒开"""
     global _cache
     print("⏳ 正在预热缓存...")
+    previous_topics: dict[str, list[dict]] = {}
+    for name in SOURCES:
+        try:
+            previous_topics[name] = await get_recent_topics(name, limit=50)
+        except Exception as exc:
+            print(f"[{name}] 读取历史热点失败: {exc}")
+            previous_topics[name] = []
+    _cache["previous_topics"] = previous_topics
     tasks = [
         _fetch_single_source(name, source)
         for name, source in SOURCES.items()
@@ -268,7 +304,11 @@ async def _preload_cache():
     for name, topics in results:
         if topics:
             _cache["topics"][name] = topics
-    _refresh_topic_views(_cache["previous_topics"])
+    _refresh_topic_views(previous_topics)
+    _cache["previous_topics"] = {
+        platform: [dict(topic) for topic in topics]
+        for platform, topics in _cache["topics"].items()
+    }
     _cache["last_fetch"] = datetime.now()
     total = sum(len(v) for v in _cache["topics"].values())
     print(f"✅ 缓存预热完成: {len(_cache['topics'])} 平台, {total} 条热点")
@@ -303,8 +343,12 @@ app.add_middleware(
 
 # 静态文件
 frontend_dir = os.path.join(os.path.dirname(__file__), "..", "frontend")
+frontend_dist_dir = os.path.join(frontend_dir, "dist")
+frontend_dist_assets_dir = os.path.join(frontend_dist_dir, "assets")
 if os.path.exists(frontend_dir):
     app.mount("/static", StaticFiles(directory=frontend_dir), name="static")
+if os.path.exists(frontend_dist_assets_dir):
+    app.mount("/assets", StaticFiles(directory=frontend_dist_assets_dir), name="assets")
 
 
 # ======================== 请求模型 ========================
@@ -347,9 +391,16 @@ class ProfileUpdateRequest(BaseModel):
 @app.get("/")
 async def index():
     """返回前端页面"""
-    index_path = os.path.join(frontend_dir, "index.html")
-    if os.path.exists(index_path):
-        return FileResponse(index_path)
+    dist_index_path = os.path.join(frontend_dist_dir, "index.html")
+    legacy_index_path = os.path.join(frontend_dir, "legacy-index.html")
+    source_index_path = os.path.join(frontend_dir, "index.html")
+
+    if os.path.exists(dist_index_path):
+        return FileResponse(dist_index_path)
+    if os.path.exists(legacy_index_path):
+        return FileResponse(legacy_index_path)
+    if os.path.exists(source_index_path):
+        return FileResponse(source_index_path)
     return {"message": "AI Hot Research API", "docs": "/docs"}
 
 
@@ -357,7 +408,7 @@ async def index():
 
 @app.post("/api/auth/register")
 async def register(req: RegisterRequest):
-    """注册新用户（最多2人）"""
+    """注册新用户（默认最多2人，可通过环境变量调整）"""
     username = req.username.strip()
     if not username or len(username) > 32:
         raise HTTPException(status_code=400, detail="用户名需为1-32个字符")
@@ -366,7 +417,7 @@ async def register(req: RegisterRequest):
     if await get_user_by_name(username):
         raise HTTPException(status_code=400, detail="用户名已存在")
     existing_count = await count_users()
-    if existing_count >= 2:
+    if existing_count >= MAX_REGISTERED_USERS:
         raise HTTPException(status_code=403, detail="注册已关闭")
 
     password_hash = pwd_context.hash(req.password)
@@ -408,10 +459,10 @@ async def patch_profile(
     req: ProfileUpdateRequest,
     authorization: Optional[str] = Header(None),
 ):
-    """更新昵称和预设头像"""
     token_user = get_current_user(authorization)
     if not token_user:
         raise HTTPException(status_code=401, detail="未登录或 token 无效")
+
     current = await get_user_by_id(token_user["id"])
     if not current:
         raise HTTPException(status_code=404, detail="用户不存在")
@@ -492,7 +543,10 @@ async def _background_refresh():
     if _bg_refresh_lock.locked():
         return  # 已有刷新在进行
     async with _bg_refresh_lock:
-        previous_topics = copy.deepcopy(_cache["topics"])
+        previous_topics = {
+            platform: [dict(topic) for topic in topics]
+            for platform, topics in _cache["topics"].items()
+        }
         tasks = [
             _fetch_single_source(name, source)
             for name, source in SOURCES.items()
@@ -502,8 +556,11 @@ async def _background_refresh():
             if topics:
                 _cache["topics"][name] = topics
                 await save_topics(name, topics)
-        _cache["previous_topics"] = previous_topics
         _refresh_topic_views(previous_topics)
+        _cache["previous_topics"] = {
+            platform: [dict(topic) for topic in topics]
+            for platform, topics in _cache["topics"].items()
+        }
         _cache["last_fetch"] = datetime.now()
         print(f"🔄 后台刷新完成")
 
@@ -517,41 +574,46 @@ async def get_topics(
     global _cache
 
     now = datetime.now()
-    has_cached_data = bool(_cache["topics"])
-    cache_age = (
-        (now - _cache["last_fetch"]).total_seconds()
-        if _cache["last_fetch"]
-        else None
+    cache_valid = (
+        _cache["last_fetch"]
+        and (now - _cache["last_fetch"]).total_seconds() < CACHE_TTL
+        and not refresh
     )
-    cache_valid = cache_age is not None and cache_age < CACHE_TTL
-    served_from = "memory_cache"
-    is_stale = False
 
-    if refresh or not has_cached_data:
-        previous_topics = copy.deepcopy(_cache["topics"])
-        if platform and platform in SOURCES:
-            sources_to_fetch = {platform: SOURCES[platform]}
+    has_cached_data = bool(_cache["topics"])
+
+    if not cache_valid:
+        if has_cached_data and not refresh:
+            # 有旧缓存：立即返回旧数据，后台刷新
+            asyncio.create_task(_background_refresh())
         else:
-            sources_to_fetch = SOURCES
+            # 无缓存或强制刷新：同步获取
+            if platform and platform in SOURCES:
+                sources_to_fetch = {platform: SOURCES[platform]}
+            else:
+                sources_to_fetch = SOURCES
 
-        tasks = [
-            _fetch_single_source(name, source)
-            for name, source in sources_to_fetch.items()
-        ]
-        results = await asyncio.gather(*tasks)
+            tasks = [
+                _fetch_single_source(name, source)
+                for name, source in sources_to_fetch.items()
+            ]
+            results = await asyncio.gather(*tasks)
+            previous_topics = {
+                key: [dict(topic) for topic in topics]
+                for key, topics in _cache["topics"].items()
+            }
 
-        for name, topics in results:
-            if topics:
-                _cache["topics"][name] = topics
-                await save_topics(name, topics)
+            for name, topics in results:
+                if topics:
+                    _cache["topics"][name] = topics
+                    await save_topics(name, topics)
 
-        _cache["previous_topics"] = previous_topics
-        _refresh_topic_views(previous_topics)
-        _cache["last_fetch"] = datetime.now()
-        served_from = "manual_refresh" if refresh else "cold_start"
-    elif not cache_valid:
-        asyncio.create_task(_background_refresh())
-        is_stale = True
+            _refresh_topic_views(previous_topics)
+            _cache["previous_topics"] = {
+                key: [dict(topic) for topic in topics]
+                for key, topics in _cache["topics"].items()
+            }
+            _cache["last_fetch"] = now
 
     # 返回数据
     if platform:
@@ -559,8 +621,6 @@ async def get_topics(
             "platform": platform,
             "topics": _cache["topics"].get(platform, []),
             "updated_at": _cache["last_fetch"].isoformat() if _cache["last_fetch"] else None,
-            "served_from": served_from,
-            "is_stale": is_stale,
         }
 
     return {
@@ -570,15 +630,19 @@ async def get_topics(
         },
         "aggregated_topics": _cache["aggregated_topics"],
         "updated_at": _cache["last_fetch"].isoformat() if _cache["last_fetch"] else None,
-        "served_from": served_from,
-        "is_stale": is_stale,
     }
 
 
 @app.post("/api/analyze")
 async def ai_analyze():
     """AI 分析当前全部热点"""
-    all_topics = _collect_analysis_topics()
+    # 收集所有缓存中的热点
+    all_topics = []
+    for platform, topics in _cache["topics"].items():
+        for t in topics:
+            t_copy = dict(t)
+            t_copy["platform"] = platform
+            all_topics.append(t_copy)
 
     if not all_topics:
         raise HTTPException(status_code=400, detail="暂无热点数据，请先刷新数据")
@@ -592,29 +656,6 @@ async def ai_analyze():
     return result
 
 
-@app.post("/api/analyze/stream")
-async def ai_analyze_stream():
-    """SSE 流式返回 AI 分析进度，最终以 result 事件给出结构化结果。"""
-    all_topics = _collect_analysis_topics()
-    if not all_topics:
-        raise HTTPException(status_code=400, detail="暂无热点数据，请先刷新数据")
-
-    async def event_stream():
-        yield _sse("status", {"message": "正在汇总热点数据"})
-        yield _sse("status", {"message": "正在调用 AI 生成分析"})
-        result = await analyze_hotspots(all_topics)
-        await save_analysis(
-            "hotspot_analysis",
-            json.dumps(all_topics[:20], ensure_ascii=False),
-            json.dumps(result, ensure_ascii=False),
-        )
-        _cache["ai_analysis"] = result
-        yield _sse("result", result)
-        yield _sse("done", {"ok": True})
-
-    return StreamingResponse(event_stream(), media_type="text/event-stream")
-
-
 @app.post("/api/analyze/topic")
 async def ai_analyze_topic(req: AnalyzeRequest):
     """AI 深度分析单个话题"""
@@ -624,22 +665,6 @@ async def ai_analyze_topic(req: AnalyzeRequest):
     result = await analyze_single_topic(req.topic)
     await save_analysis("topic_analysis", req.topic, json.dumps(result, ensure_ascii=False))
     return result
-
-
-@app.post("/api/analyze/topic/stream")
-async def ai_analyze_topic_stream(req: AnalyzeRequest):
-    """SSE 流式返回单话题分析进度。"""
-    if not req.topic:
-        raise HTTPException(status_code=400, detail="请提供话题标题")
-
-    async def event_stream():
-        yield _sse("status", {"message": f"正在分析「{req.topic}」"})
-        result = await analyze_single_topic(req.topic)
-        await save_analysis("topic_analysis", req.topic, json.dumps(result, ensure_ascii=False))
-        yield _sse("result", result)
-        yield _sse("done", {"ok": True})
-
-    return StreamingResponse(event_stream(), media_type="text/event-stream")
 
 
 @app.post("/api/chat")
@@ -671,41 +696,6 @@ async def ai_chat(req: ChatRequest, authorization: Optional[str] = Header(None))
         await save_chat_message(session_id, "assistant", answer)
 
     return {"answer": answer, "session_id": session_id}
-
-
-@app.post("/api/chat/stream")
-async def ai_chat_stream(req: ChatRequest, authorization: Optional[str] = Header(None)):
-    """SSE 流式聊天输出。"""
-    user = get_current_user(authorization)
-    if not user:
-        raise HTTPException(status_code=401, detail="请先登录后再使用 AI 功能")
-    if not req.question:
-        raise HTTPException(status_code=400, detail="请输入问题")
-
-    all_topics = _collect_analysis_topics()
-    session_id = req.session_id
-
-    if not session_id:
-        title = req.question[:20] + ("…" if len(req.question) > 20 else "")
-        session_id = await create_chat_session(user["id"], title)
-    await save_chat_message(session_id, "user", req.question)
-
-    async def event_stream():
-        answer_parts = []
-        try:
-            yield _sse("session", {"session_id": session_id})
-            async for chunk in stream_chat_about_trends(req.question, all_topics):
-                answer_parts.append(chunk)
-                yield _sse("delta", {"content": chunk})
-            answer = "".join(answer_parts).strip() or "抱歉，我暂时无法回答这个问题。"
-            await save_chat_message(session_id, "assistant", answer)
-            yield _sse("done", {"session_id": session_id, "answer": answer})
-        except Exception as e:
-            message = f"AI 服务调用失败: {str(e)}"
-            await save_chat_message(session_id, "assistant", message)
-            yield _sse("error", {"detail": message})
-
-    return StreamingResponse(event_stream(), media_type="text/event-stream")
 
 
 # ======================== 聊天历史路由 ========================
@@ -851,7 +841,16 @@ async def get_recommendations(authorization: Optional[str] = Header(None)):
 
     rss_task = rss_fetch_by_keywords(keyword_values) if keyword_values else _empty_rss()
 
-    ai_result, rss_articles = await asyncio.gather(ai_task, rss_task)
+    ai_result, rss_articles = await asyncio.gather(
+        asyncio.wait_for(ai_task, timeout=18),
+        asyncio.wait_for(rss_task, timeout=12),
+        return_exceptions=True,
+    )
+
+    if isinstance(ai_result, Exception):
+        ai_result = _build_recommendation_fallback(likes, keywords, all_topics)
+    if isinstance(rss_articles, Exception):
+        rss_articles = []
 
     # 存储 RSS 文章到 DB
     if rss_articles:

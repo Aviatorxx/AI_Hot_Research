@@ -1,0 +1,15 @@
+:root {
+  --color-brand-cyan: #00ffff;
+  --color-brand-magenta: #ff00ff;
+  --color-surface-void: #0a0a0f;
+  --color-surface-card: #16161f;
+  --color-text-primary: #e8e8f0;
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --radius-sm: 8px;
+  --radius-md: 12px;
+  --shadow-glow: 0 0 20px rgba(0, 255, 255, 0.15);
+  --transition-base: 200ms cubic-bezier(0.4, 0, 0.2, 1);
+}

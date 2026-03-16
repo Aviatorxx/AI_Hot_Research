@@ -1,6 +1,6 @@
 # 🔥 AI Hot Research — AI 驱动的热点监控工具
 
-实时聚合多平台热搜数据，结合 DeepSeek AI 进行智能分析。Cyberpunk OLED 暗黑风格单页应用。
+实时聚合多平台热搜数据，结合 DeepSeek AI 进行智能分析。当前版本已切换到 `Vite + TypeScript + FastAPI` 的前端构建与服务模式，`frontend/src` 为唯一前端逻辑源。
 
 ![Python](https://img.shields.io/badge/Python-3.11+-blue?logo=python)
 ![FastAPI](https://img.shields.io/badge/FastAPI-0.115-009688?logo=fastapi)
@@ -42,6 +42,9 @@ cd AI_Hot_Research
 
 ```bash
 pip install -r requirements.txt
+
+cd frontend
+npm install
 ```
 
 ### 3. 配置环境变量
@@ -51,7 +54,14 @@ cp .env.example .env
 # 编辑 .env，填入你的 DeepSeek API Key
 ```
 
-### 4. 启动服务
+### 4. 启动前端构建
+
+```bash
+cd frontend
+npm run build
+```
+
+### 5. 启动服务
 
 ```bash
 uvicorn backend.main:app --reload --port 8000
@@ -79,7 +89,9 @@ AI_Hot_Research/
 │       ├── twitter.py       # X/Twitter（已注释）
 │       └── reddit.py        # Reddit（已注释）
 ├── frontend/
-│   └── index.html           # 单页 SPA（~1950 行）
+│   ├── index.html           # 前端入口模板（静态 shell）
+│   ├── dist/                # Vite 构建产物（部署时被服务）
+│   └── src/                 # 前端唯一逻辑源
 ├── .env.example             # 环境变量模板
 ├── requirements.txt         # Python 依赖
 └── start_server.sh          # 启动脚本
@@ -93,7 +105,7 @@ AI_Hot_Research/
 | AI | DeepSeek (deepseek-chat) via OpenAI SDK |
 | 数据库 | SQLite + aiosqlite |
 | 网络 | httpx (异步 HTTP 客户端) |
-| 前端 | 原生 HTML/CSS/JS, Tailwind-style tokens |
+| 前端 | Vite + TypeScript + 原生 ES Modules |
 | 字体 | Fira Code + Fira Sans |
 
 ## ⚡ 性能优化
@@ -102,6 +114,25 @@ AI_Hot_Research/
 - **单源超时** — 每个源独立 8s 超时，慢源不拖累全局
 - **Stale-while-revalidate** — 有旧缓存时秒返回，后台更新
 - **5 分钟 TTL** — 缓存有效期内直接返回（~2ms 响应）
+
+## 🚚 部署说明
+
+新架构下，部署步骤必须包含前端构建：
+
+```bash
+cd frontend
+npm run check
+npm run build
+```
+
+FastAPI 会优先服务 `frontend/dist/index.html`。  
+如果只更新 Python 代码、不重新 build 前端，线上可能继续服务旧产物。
+
+详细步骤见 [deploy/DEPLOY_GUIDE.md](/Users/aviator/Documents/code/codefather/AI_Hot_Research/deploy/DEPLOY_GUIDE.md)。
+
+## 兼容说明
+
+旧版“单文件前端 + 直接重启后端”的说明保留为兼容背景，不再适用于当前主运行路径。
 
 ## 📝 License
 
