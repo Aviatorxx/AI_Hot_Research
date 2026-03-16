@@ -76,7 +76,7 @@ _bg_refresh_lock = asyncio.Lock()
 JWT_SECRET = os.getenv("JWT_SECRET", "changeme-please-set-in-env")
 JWT_ALGORITHM = "HS256"
 JWT_EXPIRE_HOURS = 24
-MAX_REGISTERED_USERS = int(os.getenv("MAX_REGISTERED_USERS", "2"))
+MAX_REGISTERED_USERS = int(os.getenv("MAX_REGISTERED_USERS", "3"))
 ALLOWED_AVATAR_PRESETS = {
     "orbit-cyan",
     "sunset-amber",
