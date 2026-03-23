@@ -1,3 +1,4 @@
+import { CATEGORY_NAMES } from "@/shared/config/constants";
 import { renderEmptyState } from "@/shared/components/empty-state/empty-state";
 import { renderPagination } from "@/shared/components/pagination/pagination";
 import type { HotFeedTopic } from "@/pages/hot-feed/hot-feed.types";
@@ -156,7 +157,7 @@ export function renderHotFeedMarkup(options: {
             : "";
         const categoryLabel =
           currentPlatform === "category"
-            ? topic.normalized_category || topic.category
+            ? CATEGORY_NAMES[topic.normalized_category || "other"] || topic.category
             : topic.category;
         const category = categoryLabel
           ? `<span class="topic-category">${escapeHtml(categoryLabel)}</span>`

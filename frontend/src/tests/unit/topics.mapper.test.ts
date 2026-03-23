@@ -13,14 +13,14 @@ describe("mapTopicsPayload", () => {
     });
 
     expect(mapped.platforms.weibo).toEqual([
-      { title: "A", url: "", hot_value: "", category: "", normalized_category: "其他", platform: undefined, rank: undefined, topic_key: "", velocity: undefined },
-      { title: "B", url: "/b", hot_value: "", category: "", normalized_category: "其他", platform: undefined, rank: undefined, topic_key: "", velocity: undefined },
+      { title: "A", url: "", hot_value: "", category: "", normalized_category: "other", platform: undefined, rank: undefined, topic_key: "", velocity: undefined },
+      { title: "B", url: "/b", hot_value: "", category: "", normalized_category: "other", platform: undefined, rank: undefined, topic_key: "", velocity: undefined },
     ]);
     expect(mapped.aggregated_topics[0]).toMatchObject({
       title: "聚合A",
       platforms: ["weibo"],
       platform_count: 1,
-      normalized_category: "其他",
+      normalized_category: "other",
       aggregate_score: 0,
     });
   });

@@ -26,8 +26,17 @@ const TITLE_KEYWORDS: Record<string, string[]> = {
   education: ["高考", "考研", "大学", "校园", "教师", "学生", "中考", "毕业", "教育"],
 };
 
-function labelFor(key: string): string {
-  return CATEGORY_NAMES[key] || CATEGORY_NAMES.other;
+function isCategoryKey(value: string): boolean {
+  return value in CATEGORY_NAMES && value !== "all";
+}
+
+function labelToKey(label: string): string | null {
+  for (const [key, value] of Object.entries(CATEGORY_NAMES)) {
+    if (key !== "all" && value === label) {
+      return key;
+    }
+  }
+  return null;
 }
 
 export function normalizeTopicCategory(input: {
@@ -36,8 +45,15 @@ export function normalizeTopicCategory(input: {
   platform?: string;
   normalized_category?: string;
 }): string {
-  if (input.normalized_category && Object.values(CATEGORY_NAMES).includes(input.normalized_category)) {
-    return input.normalized_category;
+  const preset = String(input.normalized_category || "").trim();
+  if (preset) {
+    if (isCategoryKey(preset)) {
+      return preset;
+    }
+    const mappedKey = labelToKey(preset);
+    if (mappedKey) {
+      return mappedKey;
+    }
   }
 
   const categoryText = String(input.category || "").toLowerCase();
@@ -46,22 +62,22 @@ export function normalizeTopicCategory(input: {
 
   for (const [key, hints] of Object.entries(RAW_CATEGORY_HINTS)) {
     if (hints.some((hint) => categoryText.includes(hint.toLowerCase()))) {
-      return labelFor(key);
+      return key;
     }
   }
 
   for (const [key, hints] of Object.entries(TITLE_KEYWORDS)) {
     if (hints.some((hint) => titleText.includes(hint.toLowerCase()))) {
-      return labelFor(key);
+      return key;
     }
   }
 
   if (platformText === "github" || platformText === "hackernews") {
-    return CATEGORY_NAMES.tech;
+    return "tech";
   }
   if (platformText === "bilibili") {
-    return CATEGORY_NAMES.anime;
+    return "anime";
   }
 
-  return CATEGORY_NAMES.other;
+  return "other";
 }

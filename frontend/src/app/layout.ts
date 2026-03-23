@@ -101,7 +101,7 @@ export function renderPlatformTabsMarkup(options: {
         })),
       );
   const categoryCounts = categoryCountSource.reduce<Record<string, number>>((acc, topic) => {
-    const key = topic.normalized_category || CATEGORY_NAMES.other;
+    const key = topic.normalized_category || "other";
     acc[key] = (acc[key] || 0) + 1;
     return acc;
   }, {});

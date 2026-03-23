@@ -150,7 +150,7 @@ function getFallbackCategoryTopics(): Array<Topic & { platform: string }> {
       normalized_category: normalizeTopicCategory(topic),
     }));
   if (activeCategory === "all") return merged;
-  return merged.filter((topic) => topic.normalized_category === CATEGORY_NAMES[activeCategory]);
+  return merged.filter((topic) => (topic.normalized_category || "other") === activeCategory);
 }
 
 export const autoRefresh = createAutoRefreshController({
