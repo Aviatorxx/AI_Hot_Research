@@ -157,6 +157,10 @@ function wireDataActionDelegation(): void {
         mine.switchDiscoverTab(el.dataset.tab as "hot" | "ext", el),
       openRelatedHotSection: () => mine.openRelatedHotSection(),
       focusKeywordInput: () => mine.focusKeywordInput("先添加关键词或收藏话题，系统才知道你关心什么"),
+      openPreferencesSection: (el) =>
+        mine.openPreferencesSection(
+          (el.dataset.section as "keywords" | "platforms" | "saved" | "history") || "keywords",
+        ),
       addRecommendedKeyword: (el) =>
         mine.addRecommendedKeyword(el.dataset.title || "", el.dataset.reason || ""),
       openTopicInFeed: (el) =>

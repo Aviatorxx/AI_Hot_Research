@@ -1,6 +1,7 @@
 import { preferencesStore } from "@/features/preferences/preferences.store";
 import { authStore } from "@/features/auth/auth.store";
 import { recommendationsStore } from "@/features/recommendations/recommendations.store";
+import { topicsStore } from "@/features/topics/topics.store";
 import {
   addPreferenceKeyword,
   removePreferenceKeyword,
@@ -36,7 +37,13 @@ const STOP_WORDS = new Set([
 ]);
 
 let activeDiscoverTab: "hot" | "ext" = "hot";
+let activeManagementSection: "keywords" | "platforms" | "saved" | "history" | null = null;
 let lastRelatedCount = 0;
+
+function rerenderMineWorkspace(): void {
+  if (hotFeed.getCurrentPlatform() !== "mine") return;
+  renderMyPage(topicsStore.getState().platforms);
+}
 
 function cleanKeywordCandidate(input: string): string {
   return String(input || "")
@@ -194,6 +201,7 @@ export function renderMyPage(allTopics: Record<string, any[]>): void {
     platformNames: PLATFORM_NAMES,
     visiblePlatformIds: hotFeed.getVisiblePlatformIds(),
     activeDiscoverTab: discoverTab,
+    activeManagementSection,
     escapeHtml,
     escapeAttr,
   });
@@ -202,7 +210,7 @@ export function renderMyPage(allTopics: Record<string, any[]>): void {
   if (discoverTab === "ext") {
     void loadExternalFeedContent();
   }
-  if (currentUser) {
+  if (currentUser && activeManagementSection === "history") {
     void loadChatSessionsForMine();
   }
   renderRecommendationsPanel();
@@ -248,12 +256,15 @@ async function loadChatSessionsForMine(): Promise<void> {
 }
 
 export function focusKeywordInput(message?: string): void {
+  activeManagementSection = "keywords";
   if (hotFeed.getCurrentPlatform() !== "mine") {
     hotFeed.switchPlatform("mine");
+  } else {
+    rerenderMineWorkspace();
   }
   window.requestAnimationFrame(() => {
     const input = document.getElementById("keywordInput") as HTMLInputElement | null;
-    const section = document.getElementById("keywordSubscriptionSection");
+    const section = document.getElementById("mineManagementPanel");
     section?.scrollIntoView({ behavior: "smooth", block: "start" });
     section?.classList.add("section-spotlight");
     window.setTimeout(() => section?.classList.remove("section-spotlight"), 1800);
@@ -282,6 +293,27 @@ export function openRelatedHotSection(options: { silent?: boolean } = {}): void 
   });
 }
 
+export function openPreferencesSection(
+  section: "keywords" | "platforms" | "saved" | "history",
+): void {
+  activeManagementSection =
+    activeManagementSection === section ? null : section;
+  if (hotFeed.getCurrentPlatform() !== "mine") {
+    hotFeed.switchPlatform("mine");
+  } else {
+    rerenderMineWorkspace();
+  }
+  window.requestAnimationFrame(() => {
+    const panel = document.getElementById("mineManagementPanel");
+    panel?.scrollIntoView({ behavior: "smooth", block: "start" });
+    panel?.classList.add("section-spotlight");
+    window.setTimeout(() => panel?.classList.remove("section-spotlight"), 1800);
+  });
+  if (activeManagementSection === "history" && authStore.getState().currentUser) {
+    void loadChatSessionsForMine();
+  }
+}
+
 export async function addKeyword(keywordOverride?: string): Promise<void> {
   const input = document.getElementById("keywordInput") as HTMLInputElement | null;
   const keyword = (keywordOverride ?? input?.value ?? "").trim();
@@ -298,6 +330,7 @@ export async function addKeyword(keywordOverride?: string): Promise<void> {
   try {
     await addPreferenceKeyword(keyword);
     activeDiscoverTab = "hot";
+    activeManagementSection = "keywords";
     appBus.emit("ui:update", undefined);
     pushToast({ message: `已添加关键词「${keyword}」`, type: "success" });
   } catch (error: any) {
@@ -314,6 +347,7 @@ export async function addRecommendedKeyword(title: string, reason = ""): Promise
 export async function removeKeyword(id: number): Promise<void> {
   try {
     await removePreferenceKeyword(id);
+    activeManagementSection = "keywords";
     appBus.emit("ui:update", undefined);
   } catch {
     pushToast({ message: "删除关键词失败", type: "error" });
@@ -321,6 +355,7 @@ export async function removeKeyword(id: number): Promise<void> {
 }
 
 export function showLikesModal(): void {
+  activeManagementSection = "saved";
   const { likes } = preferencesStore.getState();
   const likeEntries = Object.entries(likes);
   openModalDialog({

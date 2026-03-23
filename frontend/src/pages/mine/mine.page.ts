@@ -20,6 +20,7 @@ export function renderMinePage(options: {
   platformNames: MineRenderOptions["platformNames"];
   visiblePlatformIds: MineRenderOptions["visiblePlatformIds"];
   activeDiscoverTab: MineRenderOptions["activeDiscoverTab"];
+  activeManagementSection: MineRenderOptions["activeManagementSection"];
   escapeHtml: MineRenderOptions["escapeHtml"];
   escapeAttr: MineRenderOptions["escapeAttr"];
 }): void {
@@ -33,6 +34,7 @@ export function renderMinePage(options: {
     platformNames,
     visiblePlatformIds,
     activeDiscoverTab,
+    activeManagementSection,
     escapeHtml,
     escapeAttr,
   } = options;
@@ -49,6 +51,7 @@ export function renderMinePage(options: {
     platformNames,
     visiblePlatformIds,
     activeDiscoverTab,
+    activeManagementSection,
     escapeHtml,
     escapeAttr,
   });

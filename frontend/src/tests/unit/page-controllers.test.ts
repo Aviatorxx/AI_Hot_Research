@@ -52,12 +52,14 @@ describe("page controllers", () => {
       platformNames: { weibo: "微博", zhihu: "知乎" },
       visiblePlatformIds: ["weibo", "zhihu"],
       activeDiscoverTab: "hot",
+      activeManagementSection: "history",
       escapeHtml: (value) => value,
       escapeAttr: (value) => value,
     });
 
     expect(countElement.textContent).toBe("1 saved · 1 related");
-    expect(container.innerHTML).toContain("keywordTagsContainer");
+    expect(container.innerHTML).toContain("mineManagementPanel");
+    expect(container.innerHTML).toContain("历史会话");
     expect(container.innerHTML).toContain("chatHistoryList");
   });
 });

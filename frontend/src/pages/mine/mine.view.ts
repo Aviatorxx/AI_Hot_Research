@@ -43,6 +43,7 @@ export function renderMinePageMarkup(options: {
   platformNames: Record<string, string>;
   visiblePlatformIds: string[];
   activeDiscoverTab: "hot" | "ext";
+  activeManagementSection: "keywords" | "platforms" | "saved" | "history" | null;
   escapeHtml: (value: string) => string;
   escapeAttr: (value: string) => string;
 }): string {
@@ -54,6 +55,7 @@ export function renderMinePageMarkup(options: {
     platformNames,
     visiblePlatformIds,
     activeDiscoverTab,
+    activeManagementSection,
     escapeHtml,
     escapeAttr,
   } = options;
@@ -184,81 +186,132 @@ export function renderMinePageMarkup(options: {
   }
 
   html += `</div>
-  </div>`;
-
-  html += `<aside class="mine-side-column">
-      <div class="mine-side-label">管理与偏好</div>
-      <section class="mine-side-card" id="keywordSubscriptionSection">
-        <div class="mine-side-card-header">
-          <div>
-            <div class="mine-side-card-title">关键词订阅</div>
-            <div class="mine-side-card-copy">把稳定关注的主题沉淀成订阅项，减少每次手动筛选。</div>
-          </div>
-        </div>
-        <div class="keyword-input-row">
-          <input class="keyword-input" id="keywordInput" type="text"
-            placeholder="输入关键词（如：AI、比特币）" maxlength="50"
-            data-keydown-action="addKeyword">
-          <button class="btn btn-primary" data-action="addKeyword">添加</button>
-        </div>
-        <div class="keyword-tags" id="keywordTagsContainer"></div>
-      </section>`;
-
-  html += `<details class="mine-collapsible mine-side-card" id="platformVisibilitySection">
-      <summary class="mine-collapsible-summary">
-        <div>
-          <div class="mine-side-card-title">平台展示</div>
-          <div class="mine-side-card-copy">控制首页 tabs 和“全部平台”里真正要看的来源。</div>
-        </div>
-        <span class="mine-collapsible-meta">${visiblePlatformIds.length} / ${Object.keys(platformNames).length}</span>
-      </summary>
-      <div class="mine-collapsible-body">
-        <div class="platform-visibility-copy">未勾选的平台会从顶部 tabs 和“全部平台”聚合页中隐藏。</div>
-        <div class="platform-visibility-grid">
-          ${Object.entries(platformNames)
-            .map(([platform, name]) => {
-              const active = visiblePlatformIds.includes(platform);
-              return `<button class="platform-visibility-chip ${active ? "active" : ""}" data-action="togglePlatformVisibility" data-platform="${escapeAttr(platform)}" aria-pressed="${active ? "true" : "false"}">
-                <span>${escapeHtml(name)}</span>
-                <span class="platform-visibility-state">${active ? "显示" : "隐藏"}</span>
-              </button>`;
-            })
-            .join("")}
-        </div>
+  <section class="mine-management-panel" id="mineManagementPanel">
+    <div class="mine-management-head">
+      <div>
+        <div class="mine-management-kicker">管理与偏好</div>
+        <div class="mine-management-title">把设置收进控制区，不打断内容阅读。</div>
+        <div class="mine-management-desc">只在需要时展开关键词、平台显示、收藏或历史会话，避免“我的关注”变成设置长页面。</div>
       </div>
-    </details>`;
-
-  html += `<section class="mine-side-card">
-      <div class="mine-side-card-header">
-        <div>
-          <div class="mine-side-card-title">收藏夹</div>
-          <div class="mine-side-card-copy">把确认值得追踪的话题沉淀下来，后续可以直接分析和回看。</div>
-        </div>
-        <div class="mine-side-pill">${likes.length} 条</div>
-      </div>
-      <div class="mine-side-actions">
-        <button class="btn mine-side-btn" data-action="showLikesModal" ${likes.length === 0 ? "disabled" : ""}>
-          查看收藏
-        </button>
-      </div>
-    </section>`;
-
-  if (hasCurrentUser) {
-    html += `<details class="mine-collapsible mine-side-card" id="chatHistorySection">
-      <summary class="mine-collapsible-summary">
-        <div>
-          <div class="mine-side-card-title">历史会话</div>
-          <div class="mine-side-card-copy">保留最近的追问上下文，适合继续跟进同一批热点。</div>
-        </div>
-        <span class="mine-collapsible-meta">最近记录</span>
-      </summary>
-      <div class="mine-collapsible-body">
-        <div id="chatHistoryList"><div style="font-size:12px;color:var(--text-muted)">加载中...</div></div>
-      </div>
-    </details>`;
-  }
-
-  html += "</aside></div>";
+      <div class="mine-management-status">${activeManagementSection ? "已展开控制项" : "点击下方入口管理"}</div>
+    </div>
+    <div class="mine-management-nav" role="tablist" aria-label="管理与偏好">
+      <button class="mine-management-tab ${activeManagementSection === "keywords" ? "active" : ""}" data-action="openPreferencesSection" data-section="keywords" aria-pressed="${activeManagementSection === "keywords" ? "true" : "false"}">
+        <span class="mine-management-tab-label">关键词订阅</span>
+        <span class="mine-management-tab-meta">${keywords.length}</span>
+      </button>
+      <button class="mine-management-tab ${activeManagementSection === "platforms" ? "active" : ""}" data-action="openPreferencesSection" data-section="platforms" aria-pressed="${activeManagementSection === "platforms" ? "true" : "false"}">
+        <span class="mine-management-tab-label">平台显示</span>
+        <span class="mine-management-tab-meta">${visiblePlatformIds.length}/${Object.keys(platformNames).length}</span>
+      </button>
+      <button class="mine-management-tab ${activeManagementSection === "saved" ? "active" : ""}" data-action="openPreferencesSection" data-section="saved" aria-pressed="${activeManagementSection === "saved" ? "true" : "false"}">
+        <span class="mine-management-tab-label">收藏夹</span>
+        <span class="mine-management-tab-meta">${likes.length}</span>
+      </button>
+      ${
+        hasCurrentUser
+          ? `<button class="mine-management-tab ${activeManagementSection === "history" ? "active" : ""}" data-action="openPreferencesSection" data-section="history" aria-pressed="${activeManagementSection === "history" ? "true" : "false"}">
+              <span class="mine-management-tab-label">历史会话</span>
+              <span class="mine-management-tab-meta">最近记录</span>
+            </button>`
+          : ""
+      }
+    </div>
+    <div class="mine-management-body">
+      ${
+        activeManagementSection === "keywords"
+          ? `<section class="mine-side-card" id="keywordSubscriptionSection">
+              <div class="mine-side-card-header">
+                <div>
+                  <div class="mine-side-card-title">关键词订阅</div>
+                  <div class="mine-side-card-copy">把稳定关注的主题沉淀成订阅项，减少每次手动筛选。</div>
+                </div>
+              </div>
+              <div class="keyword-input-row">
+                <input class="keyword-input" id="keywordInput" type="text"
+                  placeholder="输入关键词（如：AI、比特币）" maxlength="50"
+                  data-keydown-action="addKeyword">
+                <button class="btn btn-primary" data-action="addKeyword">添加</button>
+              </div>
+              <div class="keyword-tags" id="keywordTagsContainer"></div>
+            </section>`
+          : activeManagementSection === "platforms"
+            ? `<section class="mine-side-card" id="platformVisibilitySection">
+                <div class="mine-side-card-header">
+                  <div>
+                    <div class="mine-side-card-title">平台展示</div>
+                    <div class="mine-side-card-copy">控制首页 tabs 和“全部平台”里真正要看的来源。</div>
+                  </div>
+                  <div class="mine-side-pill">${visiblePlatformIds.length} / ${Object.keys(platformNames).length}</div>
+                </div>
+                <div class="platform-visibility-copy">未勾选的平台会从顶部 tabs 和“全部平台”聚合页中隐藏。</div>
+                <div class="platform-visibility-grid">
+                  ${Object.entries(platformNames)
+                    .map(([platform, name]) => {
+                      const active = visiblePlatformIds.includes(platform);
+                      return `<button class="platform-visibility-chip ${active ? "active" : ""}" data-action="togglePlatformVisibility" data-platform="${escapeAttr(platform)}" aria-pressed="${active ? "true" : "false"}">
+                        <span>${escapeHtml(name)}</span>
+                        <span class="platform-visibility-state">${active ? "显示" : "隐藏"}</span>
+                      </button>`;
+                    })
+                    .join("")}
+                </div>
+              </section>`
+            : activeManagementSection === "saved"
+              ? `<section class="mine-side-card">
+                  <div class="mine-side-card-header">
+                    <div>
+                      <div class="mine-side-card-title">收藏夹</div>
+                      <div class="mine-side-card-copy">把确认值得追踪的话题沉淀下来，后续可以直接分析和回看。</div>
+                    </div>
+                    <div class="mine-side-pill">${likes.length} 条</div>
+                  </div>
+                  <div class="mine-side-actions">
+                    <button class="btn mine-side-btn" data-action="showLikesModal" ${likes.length === 0 ? "disabled" : ""}>
+                      查看收藏
+                    </button>
+                  </div>
+                </section>`
+              : activeManagementSection === "history" && hasCurrentUser
+                ? `<section class="mine-side-card" id="chatHistorySection">
+                    <div class="mine-side-card-header">
+                      <div>
+                        <div class="mine-side-card-title">历史会话</div>
+                        <div class="mine-side-card-copy">保留最近的追问上下文，适合继续跟进同一批热点。</div>
+                      </div>
+                      <div class="mine-side-pill">最近记录</div>
+                    </div>
+                    <div id="chatHistoryList"><div style="font-size:12px;color:var(--text-muted)">加载中...</div></div>
+                  </section>`
+                : `<section class="mine-side-card mine-side-card--placeholder">
+                    <div class="mine-side-card-header">
+                      <div>
+                        <div class="mine-side-card-title">按需展开管理项</div>
+                        <div class="mine-side-card-copy">只在需要时打开关键词、平台、收藏或历史会话，让这一页优先服务“看内容”和“做判断”。</div>
+                      </div>
+                    </div>
+                    <div class="mine-management-quick-grid">
+                      <div class="mine-management-quick-item">
+                        <strong>${keywords.length}</strong>
+                        <span>订阅关键词</span>
+                      </div>
+                      <div class="mine-management-quick-item">
+                        <strong>${visiblePlatformIds.length}</strong>
+                        <span>可见平台</span>
+                      </div>
+                      <div class="mine-management-quick-item">
+                        <strong>${likes.length}</strong>
+                        <span>收藏话题</span>
+                      </div>
+                      <div class="mine-management-quick-item">
+                        <strong>${hasCurrentUser ? "已登录" : "游客"}</strong>
+                        <span>会话状态</span>
+                      </div>
+                    </div>
+                  </section>`
+      }
+    </div>
+  </section></div>`;
   return html;
 }
 
