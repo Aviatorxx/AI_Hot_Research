@@ -91,15 +91,11 @@ export function renderPlatformTabsMarkup(options: {
     ? visiblePlatformIds
     : Object.keys(platformNames);
   const allCount = aggregatedTopics.length || Object.values(allTopics).reduce((sum, topics) => sum + (topics?.length || 0), 0);
-  const categoryCountSource = aggregatedTopics.length
-    ? aggregatedTopics.map((topic) => ({
-        normalized_category: normalizeTopicCategory(topic),
-      }))
-    : Object.entries(allTopics).flatMap(([platform, topics]) =>
-        (topics || []).map((topic) => ({
-          normalized_category: normalizeTopicCategory({ ...topic, platform }),
-        })),
-      );
+  const categoryCountSource = Object.entries(allTopics).flatMap(([platform, topics]) =>
+    (topics || []).map((topic) => ({
+      normalized_category: normalizeTopicCategory({ ...topic, platform }),
+    })),
+  );
   const categoryCounts = categoryCountSource.reduce<Record<string, number>>((acc, topic) => {
     const key = topic.normalized_category || "other";
     acc[key] = (acc[key] || 0) + 1;

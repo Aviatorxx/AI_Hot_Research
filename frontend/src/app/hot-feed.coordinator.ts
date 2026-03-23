@@ -142,15 +142,36 @@ function getFilteredCategoryTopics(): AggregatedTopic[] {
   return topics.filter((topic) => (topic.normalized_category || "other") === activeCategory);
 }
 
-function getFallbackCategoryTopics(): Array<Topic & { platform: string }> {
-  const merged = getVisibleTopicsForPlatform(topicsStore.getState().platforms, "all")
+function getNormalizedVisibleRawTopics(): Array<Topic & { platform: string }> {
+  return getVisibleTopicsForPlatform(topicsStore.getState().platforms, "all")
     .filter((topic) => visiblePlatformIds.includes(topic.platform))
     .map((topic) => ({
       ...topic,
       normalized_category: normalizeTopicCategory(topic),
     }));
+}
+
+function getFallbackCategoryTopics(): Array<Topic & { platform: string }> {
+  const merged = getNormalizedVisibleRawTopics();
   if (activeCategory === "all") return merged;
   return merged.filter((topic) => (topic.normalized_category || "other") === activeCategory);
+}
+
+function getCategoryViewTopics(): Array<AggregatedTopic | (Topic & { platform: string })> {
+  const aggregated = getFilteredCategoryTopics();
+  const raw = getFallbackCategoryTopics();
+  if (aggregated.length === 0) return raw;
+
+  const seenKeys = new Set<string>();
+  for (const topic of aggregated) {
+    seenKeys.add(normalizeTopicTitle(topic.title));
+    for (const alias of topic.aliases || []) {
+      seenKeys.add(normalizeTopicTitle(alias));
+    }
+  }
+
+  const supplemental = raw.filter((topic) => !seenKeys.has(normalizeTopicTitle(topic.title)));
+  return [...aggregated, ...supplemental];
 }
 
 export const autoRefresh = createAutoRefreshController({
@@ -339,9 +360,7 @@ function getVisibleTopics(): Array<AggregatedTopic | (Topic & { platform: string
   if (currentPlatform === "all" || currentPlatform === "category") {
     let topics: Array<AggregatedTopic | (Topic & { platform: string })> =
       currentPlatform === "category"
-        ? (getFilteredAggregatedTopics().length > 0
-            ? getFilteredCategoryTopics()
-            : getFallbackCategoryTopics())
+        ? getCategoryViewTopics()
         : sortAggregatedTopics(getFilteredAggregatedTopics());
     if (activeClusterFilter && activeClusterFilter.length > 0) {
       topics = topics.filter((topic) =>
@@ -421,13 +440,19 @@ function buildFeedContext() {
 }
 
 function buildCategoryInsightsData() {
-  const topics = getFilteredCategoryTopics();
+  const topics = getCategoryViewTopics();
   const categoryLabel = CATEGORY_NAMES[activeCategory] || CATEGORY_NAMES.other;
-  const resonanceCount = topics.filter((topic) => (topic.platform_count || 0) > 1).length;
+  const resonanceCount = topics.filter(
+    (topic) => "platform_count" in topic && (topic.platform_count || 0) > 1,
+  ).length;
   const risingCount = topics.filter((topic) => topic.velocity?.direction === "up").length;
   const platformCounts = topics.reduce<Record<string, number>>((acc, topic) => {
-    for (const platform of topic.platforms || []) {
-      acc[platform] = (acc[platform] || 0) + 1;
+    if ("platforms" in topic) {
+      for (const platform of topic.platforms || []) {
+        acc[platform] = (acc[platform] || 0) + 1;
+      }
+    } else if (topic.platform) {
+      acc[topic.platform] = (acc[topic.platform] || 0) + 1;
     }
     return acc;
   }, {});
