@@ -274,6 +274,10 @@ select {
   gap: 4px;
 }
 
+.platform-tab-group--sources.is-category {
+  gap: 6px;
+}
+
 .platform-tab-divider {
   width: 1px;
   align-self: stretch;
@@ -332,6 +336,18 @@ select {
   background: rgba(255, 184, 0, 0.1);
   border-color: rgba(255, 184, 0, 0.36);
   color: var(--neon-amber);
+}
+
+.platform-tab.category-tab.active {
+  background: rgba(255, 0, 255, 0.08);
+  border-color: rgba(255, 0, 255, 0.22);
+  color: var(--neon-magenta);
+}
+
+.platform-tab.category-filter {
+  padding-inline: calc(11px * var(--ui-scale));
+  border-radius: 999px;
+  font-weight: 500;
 }
 
 .feed-mode-switch {

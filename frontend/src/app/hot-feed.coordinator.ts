@@ -11,7 +11,11 @@ import {
   runTopicAnalysis,
 } from "@/features/analysis/analysis.service";
 import { buildKeywordMatches } from "@/features/notifications/notifications.service";
-import { PLATFORM_NAMES, STORAGE_KEYS } from "@/shared/config/constants";
+import {
+  CATEGORY_NAMES,
+  PLATFORM_NAMES,
+  STORAGE_KEYS,
+} from "@/shared/config/constants";
 import { getStoredBoolean } from "@/shared/lib/storage";
 import { escapeHtml, escapeAttr, highlightText } from "@/shared/lib/format";
 import { pushToast } from "@/shared/components/toast/toast";
@@ -45,6 +49,7 @@ const AUTO_REFRESH_INTERVAL = 5 * 60;
 const ALL_PLATFORM_IDS = Object.keys(PLATFORM_NAMES);
 
 type FeedMode = "all" | "resonance" | "rising";
+type BrowseMode = "all" | "mine" | "category";
 
 interface TopicLookupState {
   requestedTitle: string;
@@ -56,11 +61,13 @@ interface TopicLookupState {
 }
 
 let currentPlatform = "mine";
+let browseMode: BrowseMode = "mine";
 let currentPage = 1;
 let searchQuery = "";
 let analysisCount = 0;
 let notifyEnabled = getStoredBoolean(STORAGE_KEYS.notifyEnabled);
 let feedMode: FeedMode = "all";
+let activeCategory = "all";
 let activeClusterFilter: string[] | null = null;
 let topicLookupState: TopicLookupState | null = null;
 const notifiedThisSession = new Set<string>();
@@ -124,6 +131,12 @@ function getFilteredAggregatedTopics(): AggregatedTopic[] {
       };
     })
     .filter((topic) => topic.platform_count > 0);
+}
+
+function getFilteredCategoryTopics(): AggregatedTopic[] {
+  const topics = sortAggregatedTopics(getFilteredAggregatedTopics());
+  if (activeCategory === "all") return topics;
+  return topics.filter((topic) => (topic.normalized_category || "other") === activeCategory);
 }
 
 export const autoRefresh = createAutoRefreshController({
@@ -304,9 +317,16 @@ export function getFeedMode(): FeedMode {
   return feedMode;
 }
 
+export function getBrowseMode(): BrowseMode {
+  return browseMode;
+}
+
 function getVisibleTopics(): Array<AggregatedTopic | (Topic & { platform: string })> {
-  if (currentPlatform === "all") {
-    let topics = sortAggregatedTopics(getFilteredAggregatedTopics());
+  if (currentPlatform === "all" || currentPlatform === "category") {
+    let topics =
+      currentPlatform === "category"
+        ? getFilteredCategoryTopics()
+        : sortAggregatedTopics(getFilteredAggregatedTopics());
     if (activeClusterFilter && activeClusterFilter.length > 0) {
       topics = topics.filter((topic) =>
         activeClusterFilter?.some((keyword) =>
@@ -345,22 +365,67 @@ function buildFeedContext() {
       status: topicLookupState.status,
     };
   }
-  if (currentPlatform === "all" && (feedMode !== "all" || (activeClusterFilter?.length || 0) > 0)) {
+  if (
+    (currentPlatform === "all" || currentPlatform === "category") &&
+    (feedMode !== "all" || (activeClusterFilter?.length || 0) > 0 || activeCategory !== "all")
+  ) {
     const modeMeta = getFeedModeMeta(feedMode);
     const clusterMeta =
       activeClusterFilter && activeClusterFilter.length > 0
         ? `AI 聚焦：${activeClusterFilter.slice(0, 3).join(" / ")}`
         : modeMeta.meta;
     return {
-      label: modeMeta.label,
-      title: modeMeta.title,
+      label:
+        currentPlatform === "category"
+          ? `类型频道 · ${CATEGORY_NAMES[activeCategory] || CATEGORY_NAMES.other}`
+          : modeMeta.label,
+      title:
+        currentPlatform === "category"
+          ? `${CATEGORY_NAMES[activeCategory] || CATEGORY_NAMES.other}热点`
+          : modeMeta.title,
       meta: clusterMeta,
-      clearAction: "resetFeedContext",
+      clearAction: currentPlatform === "category" ? "resetCategoryContext" : "resetFeedContext",
       clearLabel: "恢复全部",
       clearKeywords: activeClusterFilter?.join("|"),
     };
   }
   return null;
+}
+
+function buildCategoryInsightsData() {
+  const topics = getFilteredCategoryTopics();
+  const categoryLabel = CATEGORY_NAMES[activeCategory] || CATEGORY_NAMES.other;
+  const resonanceCount = topics.filter((topic) => (topic.platform_count || 0) > 1).length;
+  const risingCount = topics.filter((topic) => topic.velocity?.direction === "up").length;
+  const platformCounts = topics.reduce<Record<string, number>>((acc, topic) => {
+    for (const platform of topic.platforms || []) {
+      acc[platform] = (acc[platform] || 0) + 1;
+    }
+    return acc;
+  }, {});
+  const topPlatform = Object.entries(platformCounts).sort((a, b) => b[1] - a[1])[0];
+  const topTitles = topics
+    .slice(0, 3)
+    .map((topic) => topic.title)
+    .filter(Boolean);
+
+  const overview =
+    activeCategory === "all"
+      ? `当前已启用平台里共有 ${topics.length} 条热点，跨平台共振 ${resonanceCount} 条，上升最快 ${risingCount} 条。`
+      : `当前「${categoryLabel}」频道共有 ${topics.length} 条热点，跨平台共振 ${resonanceCount} 条，上升最快 ${risingCount} 条。`;
+  const recommendation =
+    topTitles.length > 0
+      ? `优先关注 ${topTitles.join("、")}。${
+          topPlatform
+            ? `当前以 ${PLATFORM_NAMES[topPlatform[0]] || topPlatform[0]} 的相关内容最密集。`
+            : ""
+        }`
+      : `当前「${categoryLabel}」频道暂无可推荐的热点。`;
+
+  return {
+    overview,
+    recommendation,
+  };
 }
 
 export function updateStats(): void {
@@ -397,6 +462,8 @@ export function updatePlatformTabs(): void {
     currentPlatform,
     platformNames: PLATFORM_NAMES,
     visiblePlatformIds,
+    browseMode,
+    activeCategory,
   });
 }
 
@@ -426,16 +493,25 @@ export function renderTopics(): void {
 export function renderAnalysisPanel(data: any | null): void {
   const container = document.getElementById("aiPanelContainer");
   if (!container) return;
+  const panelData = currentPlatform === "category" ? buildCategoryInsightsData() : data;
   const modeMeta =
     currentPlatform === "all"
       ? getFeedModeMeta(feedMode)
+      : currentPlatform === "category"
+        ? {
+            label: CATEGORY_NAMES[activeCategory] || CATEGORY_NAMES.other,
+            meta:
+              activeCategory === "all"
+                ? "按内容频道查看当前已启用平台的热点，适合先看主题再判断来源。"
+                : `当前只显示「${CATEGORY_NAMES[activeCategory] || CATEGORY_NAMES.other}」频道内容，可继续看共振或上升最快。`,
+          }
       : {
           label: PLATFORM_NAMES[currentPlatform] || "当前平台",
           meta: "聚焦单个平台热榜，适合快速判断该来源的实时热度变化。",
         };
   renderHotFeedAnalysisPanel({
     container,
-    data,
+    data: panelData,
     jobs: topicAnalysisJobs.slice(0, 5),
     selectedJobId: selectedAnalysisJobId,
     stateSummary: {
@@ -553,6 +629,13 @@ export async function runAiAnalysis(): Promise<void> {
   if (container) renderHotFeedAnalysisLoading(container);
 
   try {
+    if (startedPlatform === "category") {
+      analysisCount += 1;
+      updateStats();
+      renderAnalysisPanel(buildCategoryInsightsData());
+      pushToast({ message: "分类频道概览已生成", type: "success" });
+      return;
+    }
     const data = await runAnalysisSummary();
     analysisCount += 1;
     updateStats();
@@ -617,16 +700,26 @@ export function switchPlatform(
     preserveLookup?: boolean;
   } = {},
 ): void {
-  if (platform !== "all" && platform !== "mine" && !visiblePlatformIds.includes(platform)) {
+  if (
+    platform !== "all" &&
+    platform !== "mine" &&
+    platform !== "category" &&
+    !visiblePlatformIds.includes(platform)
+  ) {
     platform = "all";
   }
   currentPlatform = platform;
+  browseMode =
+    platform === "mine" ? "mine" : platform === "category" ? "category" : "all";
   currentPage = 1;
   if (!options.preserveCluster) {
     activeClusterFilter = null;
   }
   if (!options.preserveLookup) {
     topicLookupState = null;
+  }
+  if (platform !== "category") {
+    activeCategory = "all";
   }
   if (!options.preserveSearch && searchQuery) {
     resetSearchState();
@@ -651,8 +744,14 @@ export function togglePlatformVisibility(platform: string): void {
     : [...visiblePlatformIds, platform];
   persistVisiblePlatforms();
 
-  if (currentPlatform !== "all" && currentPlatform !== "mine" && !visiblePlatformIds.includes(currentPlatform)) {
+  if (
+    currentPlatform !== "all" &&
+    currentPlatform !== "mine" &&
+    currentPlatform !== "category" &&
+    !visiblePlatformIds.includes(currentPlatform)
+  ) {
     currentPlatform = "all";
+    browseMode = "all";
   }
 
   appBus.emit("ui:update", undefined);
@@ -682,7 +781,7 @@ export function openFeedMode(
   currentPage = 1;
   if (!options.preserveCluster) activeClusterFilter = null;
   if (!options.preserveLookup) topicLookupState = null;
-  switchPlatform("all", {
+  switchPlatform(currentPlatform === "category" ? "category" : "all", {
     preserveCluster: true,
     preserveLookup: true,
     preserveSearch: options.preserveSearch,
@@ -712,7 +811,7 @@ export function resetFeedContext(): void {
   feedMode = "all";
   currentPage = 1;
   topicLookupState = null;
-  if (currentPlatform !== "all") {
+  if (currentPlatform !== "all" && currentPlatform !== "category") {
     switchPlatform("all", {
       preserveCluster: true,
       preserveLookup: true,
@@ -722,6 +821,40 @@ export function resetFeedContext(): void {
   }
   document.getElementById("topicListContainer")?.scrollTo({ top: 0 });
   pushToast({ message: "已恢复全部热点视图", type: "info" });
+}
+
+export function resetCategoryContext(): void {
+  activeClusterFilter = null;
+  feedMode = "all";
+  currentPage = 1;
+  topicLookupState = null;
+  activeCategory = "all";
+  if (currentPlatform !== "category") {
+    switchPlatform("category", {
+      preserveCluster: true,
+      preserveLookup: true,
+    });
+  } else {
+    renderTopics();
+  }
+  document.getElementById("topicListContainer")?.scrollTo({ top: 0 });
+  pushToast({ message: "已恢复全部分类频道", type: "info" });
+}
+
+export function setCategory(category: string): void {
+  activeCategory = CATEGORY_NAMES[category] ? category : "all";
+  currentPage = 1;
+  topicLookupState = null;
+  if (currentPlatform !== "category") {
+    switchPlatform("category", {
+      preserveSearch: true,
+      preserveCluster: false,
+      preserveLookup: true,
+    });
+    return;
+  }
+  renderTopics();
+  renderAnalysisPanel(analysisStore.getState().summary);
 }
 
 export function clearTopicLookup(): void {

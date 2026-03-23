@@ -15,6 +15,7 @@ export interface Topic {
   url?: string;
   hot_value?: string;
   category?: string;
+  normalized_category?: string;
   platform?: string;
   rank?: number;
   topic_key?: string;
@@ -26,6 +27,7 @@ export interface AggregatedTopic {
   url?: string;
   hot_value?: string;
   category?: string;
+  normalized_category?: string;
   rank?: number;
   platforms: string[];
   platform_count: number;

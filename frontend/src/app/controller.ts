@@ -40,11 +40,7 @@ function updateUI(): void {
     mine.renderMyPage(topicsStore.getState().platforms);
   } else {
     hotFeed.renderTopics();
-    if (analysisStore.getState().summary || hotFeed.hasTopicAnalysisJobs()) {
-      hotFeed.renderAnalysisPanel(analysisStore.getState().summary);
-    } else {
-      mine.renderRecommendationsPanel();
-    }
+    hotFeed.renderAnalysisPanel(analysisStore.getState().summary);
   }
 }
 
@@ -97,6 +93,7 @@ function wireDataActionDelegation(): void {
       // Hot-feed actions
       refreshData: () => hotFeed.refreshData(),
       switchPlatform: (el) => hotFeed.switchPlatform(el.dataset.platform || "mine"),
+      setCategory: (el) => hotFeed.setCategory(el.dataset.category || "all"),
       toggleLike: (el) => {
         const { title = "", platform = "", url = "" } = el.dataset;
         void hotFeed.toggleLike(el, title, platform, url);
@@ -132,6 +129,7 @@ function wireDataActionDelegation(): void {
       openFeedMode: (el) => hotFeed.openFeedMode((el.dataset.mode as "all" | "resonance" | "rising") || "all"),
       focusCluster: (el) => hotFeed.focusCluster(el.dataset.keywords || ""),
       resetFeedContext: () => hotFeed.resetFeedContext(),
+      resetCategoryContext: () => hotFeed.resetCategoryContext(),
       clearTopicLookup: () => hotFeed.clearTopicLookup(),
       toggleTheme: () => {
         theme.toggleTheme();

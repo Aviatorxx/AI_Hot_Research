@@ -53,6 +53,35 @@ describe("app shell helpers", () => {
     expect(html).not.toContain("微博热搜");
   });
 
+  it("renders category tabs in category mode", () => {
+    const html = renderPlatformTabsMarkup({
+      allTopics: {
+        github: [{ title: "Repo" }],
+        weibo: [{ title: "热搜A" }],
+      },
+      aggregatedTopics: [
+        {
+          title: "聚合A",
+          platforms: ["weibo"],
+          platform_count: 1,
+          normalized_category: "tech",
+        },
+      ],
+      currentPlatform: "category",
+      platformNames: {
+        weibo: "微博热搜",
+        github: "GitHub Trending",
+      },
+      browseMode: "category",
+      activeCategory: "tech",
+    });
+
+    expect(html).toContain("按类型");
+    expect(html).toContain("科技");
+    expect(html).toContain("category-filter active");
+    expect(html).not.toContain("GitHub Trending");
+  });
+
   it("resolves visible topics for all and applies shell mode", () => {
     const topics = getVisibleTopicsForPlatform(
       {

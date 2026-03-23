@@ -11,6 +11,7 @@ export interface HotFeedTopic {
   url?: string;
   hot_value?: string;
   category?: string;
+  normalized_category?: string;
   platform?: string;
   rank?: number;
   platforms?: string[];

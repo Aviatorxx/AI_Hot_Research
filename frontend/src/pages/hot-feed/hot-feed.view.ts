@@ -151,20 +151,24 @@ export function renderHotFeedMarkup(options: {
         const rankClass =
           globalIdx === 0 ? "top-1" : globalIdx === 1 ? "top-2" : globalIdx === 2 ? "top-3" : "";
         const platformLabel =
-          currentPlatform === "all"
+          currentPlatform === "all" || currentPlatform === "category"
             ? renderPlatformPills(topic.platforms || [topic.platform || ""], platformNames, escapeHtml)
             : "";
-        const category = topic.category
-          ? `<span class="topic-category">${escapeHtml(topic.category)}</span>`
+        const categoryLabel =
+          currentPlatform === "category"
+            ? topic.normalized_category || topic.category
+            : topic.category;
+        const category = categoryLabel
+          ? `<span class="topic-category">${escapeHtml(categoryLabel)}</span>`
           : "";
         const heatLabel =
           topic.hot_value ||
-          (currentPlatform === "all" && (topic.platform_count || 0) > 1
+          ((currentPlatform === "all" || currentPlatform === "category") && (topic.platform_count || 0) > 1
             ? `跨 ${topic.platform_count} 平台`
             : "");
         const velocityHtml = renderVelocityBadge(topic.velocity, escapeAttr);
         const resonanceHtml =
-          currentPlatform === "all" && (topic.platform_count || 0) > 1
+          (currentPlatform === "all" || currentPlatform === "category") && (topic.platform_count || 0) > 1
             ? `<span class="topic-resonance" title="该话题同时出现在 ${escapeAttr(
                 String(topic.platform_count),
               )} 个平台热榜">共振 ×${topic.platform_count}</span>`
