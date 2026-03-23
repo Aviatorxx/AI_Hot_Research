@@ -1,8 +1,11 @@
 import type { AggregatedTopic } from "@/features/topics/topics.types";
 import { CATEGORY_NAMES, CATEGORY_ORDER } from "@/shared/config/constants";
+import { normalizeTopicCategory } from "@/features/topics/category";
 
 interface TopicLike {
   title: string;
+  category?: string;
+  normalized_category?: string;
 }
 
 type TopicsByPlatform = Record<string, TopicLike[] | undefined>;
@@ -88,8 +91,17 @@ export function renderPlatformTabsMarkup(options: {
     ? visiblePlatformIds
     : Object.keys(platformNames);
   const allCount = aggregatedTopics.length || Object.values(allTopics).reduce((sum, topics) => sum + (topics?.length || 0), 0);
-  const categoryCounts = aggregatedTopics.reduce<Record<string, number>>((acc, topic) => {
-    const key = topic.normalized_category || "other";
+  const categoryCountSource = aggregatedTopics.length
+    ? aggregatedTopics.map((topic) => ({
+        normalized_category: normalizeTopicCategory(topic),
+      }))
+    : Object.entries(allTopics).flatMap(([platform, topics]) =>
+        (topics || []).map((topic) => ({
+          normalized_category: normalizeTopicCategory({ ...topic, platform }),
+        })),
+      );
+  const categoryCounts = categoryCountSource.reduce<Record<string, number>>((acc, topic) => {
+    const key = topic.normalized_category || CATEGORY_NAMES.other;
     acc[key] = (acc[key] || 0) + 1;
     return acc;
   }, {});

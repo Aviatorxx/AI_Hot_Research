@@ -207,6 +207,8 @@ select {
   border-radius: 16px;
   border-color: rgba(255, 255, 255, 0.04);
   box-shadow: none;
+  cursor: pointer;
+  user-select: none;
 }
 
 .stat-card:hover {

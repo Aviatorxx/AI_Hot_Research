@@ -94,6 +94,8 @@ function wireDataActionDelegation(): void {
       refreshData: () => hotFeed.refreshData(),
       switchPlatform: (el) => hotFeed.switchPlatform(el.dataset.platform || "mine"),
       setCategory: (el) => hotFeed.setCategory(el.dataset.category || "all"),
+      focusVelocityDirection: (el) =>
+        hotFeed.focusVelocityDirection((el.dataset.direction as "new") || "new"),
       toggleLike: (el) => {
         const { title = "", platform = "", url = "" } = el.dataset;
         void hotFeed.toggleLike(el, title, platform, url);

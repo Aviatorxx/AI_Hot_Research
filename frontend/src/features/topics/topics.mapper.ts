@@ -4,6 +4,7 @@ import type {
   TopicsByPlatform,
   TopicsPayload,
 } from "@/features/topics/topics.types";
+import { normalizeTopicCategory } from "@/features/topics/category";
 
 function normalizeTopics(topics: Topic[] = []): Topic[] {
   return topics.map((topic) => ({
@@ -11,7 +12,7 @@ function normalizeTopics(topics: Topic[] = []): Topic[] {
     url: topic.url ?? "",
     hot_value: topic.hot_value ?? "",
     category: topic.category ?? "",
-    normalized_category: topic.normalized_category ?? "",
+    normalized_category: normalizeTopicCategory(topic),
     platform: topic.platform,
     rank: typeof topic.rank === "number" ? topic.rank : Number(topic.rank || 0) || undefined,
     topic_key: topic.topic_key ?? "",
@@ -31,7 +32,7 @@ function normalizeAggregatedTopics(topics: AggregatedTopic[] = []): AggregatedTo
     url: topic.url ?? "",
     hot_value: topic.hot_value ?? "",
     category: topic.category ?? "",
-    normalized_category: topic.normalized_category ?? "",
+    normalized_category: normalizeTopicCategory(topic),
     rank: typeof topic.rank === "number" ? topic.rank : Number(topic.rank || 0) || undefined,
     platforms: (topic.platforms || []).filter(Boolean),
     platform_count: Number(topic.platform_count || 0),

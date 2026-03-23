@@ -42,6 +42,8 @@ import {
   updateNotifyButton,
 } from "@/app/notifications";
 import { appBus } from "@/app/app-event-bus";
+import { getVisibleTopicsForPlatform } from "@/app/router";
+import { normalizeTopicCategory } from "@/features/topics/category";
 import type { AggregatedTopic, Topic } from "@/features/topics/topics.types";
 
 const PAGE_SIZE = 20;
@@ -68,6 +70,7 @@ let analysisCount = 0;
 let notifyEnabled = getStoredBoolean(STORAGE_KEYS.notifyEnabled);
 let feedMode: FeedMode = "all";
 let activeCategory = "all";
+let activeVelocityFilter: "new" | null = null;
 let activeClusterFilter: string[] | null = null;
 let topicLookupState: TopicLookupState | null = null;
 const notifiedThisSession = new Set<string>();
@@ -137,6 +140,17 @@ function getFilteredCategoryTopics(): AggregatedTopic[] {
   const topics = sortAggregatedTopics(getFilteredAggregatedTopics());
   if (activeCategory === "all") return topics;
   return topics.filter((topic) => (topic.normalized_category || "other") === activeCategory);
+}
+
+function getFallbackCategoryTopics(): Array<Topic & { platform: string }> {
+  const merged = getVisibleTopicsForPlatform(topicsStore.getState().platforms, "all")
+    .filter((topic) => visiblePlatformIds.includes(topic.platform))
+    .map((topic) => ({
+      ...topic,
+      normalized_category: normalizeTopicCategory(topic),
+    }));
+  if (activeCategory === "all") return merged;
+  return merged.filter((topic) => topic.normalized_category === CATEGORY_NAMES[activeCategory]);
 }
 
 export const autoRefresh = createAutoRefreshController({
@@ -323,9 +337,11 @@ export function getBrowseMode(): BrowseMode {
 
 function getVisibleTopics(): Array<AggregatedTopic | (Topic & { platform: string })> {
   if (currentPlatform === "all" || currentPlatform === "category") {
-    let topics =
+    let topics: Array<AggregatedTopic | (Topic & { platform: string })> =
       currentPlatform === "category"
-        ? getFilteredCategoryTopics()
+        ? (getFilteredAggregatedTopics().length > 0
+            ? getFilteredCategoryTopics()
+            : getFallbackCategoryTopics())
         : sortAggregatedTopics(getFilteredAggregatedTopics());
     if (activeClusterFilter && activeClusterFilter.length > 0) {
       topics = topics.filter((topic) =>
@@ -334,15 +350,22 @@ function getVisibleTopics(): Array<AggregatedTopic | (Topic & { platform: string
         ),
       );
     }
+    if (activeVelocityFilter) {
+      topics = topics.filter((topic) => topic.velocity?.direction === activeVelocityFilter);
+    }
     return topics;
   }
 
-  return ((visiblePlatformIds.includes(currentPlatform)
+  let topics: Array<Topic & { platform: string }> = ((visiblePlatformIds.includes(currentPlatform)
     ? topicsStore.getState().platforms[currentPlatform]
     : []) || []).map((topic) => ({
     ...topic,
     platform: currentPlatform,
   }));
+  if (activeVelocityFilter) {
+    topics = topics.filter((topic) => topic.velocity?.direction === activeVelocityFilter);
+  }
+  return topics;
 }
 
 function updateFeedModeButtons(): void {
@@ -367,12 +390,17 @@ function buildFeedContext() {
   }
   if (
     (currentPlatform === "all" || currentPlatform === "category") &&
-    (feedMode !== "all" || (activeClusterFilter?.length || 0) > 0 || activeCategory !== "all")
+    (feedMode !== "all" ||
+      (activeClusterFilter?.length || 0) > 0 ||
+      activeCategory !== "all" ||
+      activeVelocityFilter !== null)
   ) {
     const modeMeta = getFeedModeMeta(feedMode);
     const clusterMeta =
       activeClusterFilter && activeClusterFilter.length > 0
         ? `AI 聚焦：${activeClusterFilter.slice(0, 3).join(" / ")}`
+        : activeVelocityFilter === "new"
+          ? "仅查看本轮新上榜热点"
         : modeMeta.meta;
     return {
       label:
@@ -721,6 +749,9 @@ export function switchPlatform(
   if (platform !== "category") {
     activeCategory = "all";
   }
+  if (platform === "mine") {
+    activeVelocityFilter = null;
+  }
   if (!options.preserveSearch && searchQuery) {
     resetSearchState();
   }
@@ -781,6 +812,7 @@ export function openFeedMode(
   currentPage = 1;
   if (!options.preserveCluster) activeClusterFilter = null;
   if (!options.preserveLookup) topicLookupState = null;
+  activeVelocityFilter = null;
   switchPlatform(currentPlatform === "category" ? "category" : "all", {
     preserveCluster: true,
     preserveLookup: true,
@@ -809,6 +841,7 @@ export function focusCluster(rawKeywords: string): void {
 export function resetFeedContext(): void {
   activeClusterFilter = null;
   feedMode = "all";
+  activeVelocityFilter = null;
   currentPage = 1;
   topicLookupState = null;
   if (currentPlatform !== "all" && currentPlatform !== "category") {
@@ -826,6 +859,7 @@ export function resetFeedContext(): void {
 export function resetCategoryContext(): void {
   activeClusterFilter = null;
   feedMode = "all";
+  activeVelocityFilter = null;
   currentPage = 1;
   topicLookupState = null;
   activeCategory = "all";
@@ -843,10 +877,27 @@ export function resetCategoryContext(): void {
 
 export function setCategory(category: string): void {
   activeCategory = CATEGORY_NAMES[category] ? category : "all";
+  activeVelocityFilter = null;
   currentPage = 1;
   topicLookupState = null;
   if (currentPlatform !== "category") {
     switchPlatform("category", {
+      preserveSearch: true,
+      preserveCluster: false,
+      preserveLookup: true,
+    });
+    return;
+  }
+  renderTopics();
+  renderAnalysisPanel(analysisStore.getState().summary);
+}
+
+export function focusVelocityDirection(direction: "new"): void {
+  activeVelocityFilter = direction;
+  currentPage = 1;
+  topicLookupState = null;
+  if (currentPlatform === "mine") {
+    switchPlatform("all", {
       preserveSearch: true,
       preserveCluster: false,
       preserveLookup: true,
